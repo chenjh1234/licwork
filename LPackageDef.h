@@ -5,7 +5,7 @@
 #define PVERSION "version"
 #define PTYPE "type"
 #define PLIMIT "limit"
-#define PBORROW "pborrow"
+#define PBORROW "pborrow"// if not NULL is the server pubkey
 #define PSTARTDATE "startdate"
 #define PENDDATE "enddate"
 #define PKEY "key"

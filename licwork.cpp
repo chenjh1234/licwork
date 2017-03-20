@@ -7,11 +7,22 @@
 using namespace std;
 
 #define TEST_UNIT
+
+#define SERVER_PUB "server.pub"
+#define SERVER_PRI "server.pri"
+#define VENDER_PUB "vender.pub"
+#define VENDER_PRI "vender.pri"
+
+#define LIC_FILE_SAMPLE "licfile.sample"
+#define LIC_FILE "licfile.lic"
+#define LIC_FILE1 "licfile1.lic"
+#include "../crypt/testCrypt.cpp"
 #include "createlic.cpp"
-#include "testCrypt.cpp"
+//#include "testCrypt.cpp"
 #include "mid.cpp"
 #include "uuid.cpp"
 #include "createkey.cpp"
+#include "log.cpp"
 
 
 
@@ -355,25 +366,417 @@ U_START(SLicMngLoadFile)
     SLicMng sm;
     int i;
     QString file,str;
-    file = "lic_bgp_02c0cc5b-4105-4acd-b12b-2cf93c5ab2fd_.lic";
+    file = "./test/test_lic_task2.lic";
+ // load file:
+
+    i = sm.loadFile(file,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i ,0);
+    EQ(sm.data->packSize(),2)
+    QString key;
+    key = sm.data->packNames()[0];
+    qDebug()  << "key = " << key << sm.data->packNames();
+    qDebug() << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1)
+    EQ(sm.data->packMng(key)->userSize(),0)
+    EQ(sm.data->packMng(key)->nodeSize(),0)
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    EQ(sm.data->packMng(key)->taskUsed(),0)
+// re load file:
+        i = sm.loadFile(file,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    LT(i ,0);
+// unload file
+    i = sm.unloadFile(file,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    EQ(i ,2);
+    EQ(sm.data->packSize(),0)
+    EQ(sm.data->removedSize(),2)
+
+    //   load file after remove:
     i = sm.loadFile(file,SERVER_PRI);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
     GT(i ,0);
 
+U_END
+U_START(SLicMngApp)
+    SLicMng sm;
+    SAppInfo info,*pf;
+    int i;
+    QString file,str,key;
+    QString ip,pid,user,appid;
+    ip = "192.168.157.129";
+    pid = "1234";
+    user = "cjh";
+    appid = ip+"_"+pid;
+    //qDebug()  << "key = " << key << sm.data->mapPack.keys();
+    
+    info.set(APP_IP,ip.Q2CH);
+    info.set(APP_USER,user.Q2CH);
+    info.set(APP_PID,pid.Q2CH);
+
+    info.set(APP_VENDER,"geoeast");
+    info.set(APP_PACKAGE,"pc1");
+    info.set(APP_VERSION,"1.0");
+    info.set(APP_NUMBER,"5");
+    i = sm.loginApp(info);
+    GT(i,0)
+    QString packid1,packid2,appid1;
+    packid1 = sm.data->packNames()[0];
+    packid2 = sm.data->packNames()[1];
+    appid1 =  ((SAppInfo *)(sm.data->appMng(packid1)->get(0)))->appid;
+
+    key = packid1;
+    qDebug() << "m.data->mapPack.keys()"<<sm.data->packNames() << key;
+    qDebug() <<"sm.data->mapApp.keys()"<< sm.data->appPacks() << key;
+    qDebug() << "sm.data->mapApp[key] "<< sm.data->appMng(packid1);//==0??
+
+    EQ(sm.data->packSize(),2)
+    EQ(sm.data->appSize(),1)
+    EQ(sm.data->packMng(packid1)->nodeSize(),0)
+    EQ(sm.data->packMng(packid1)->userSize(),0)
+    EQ(sm.data->packMng(packid1)->taskSize(),1)
+    //QString str;
+    pf = (SAppInfo *)(sm.data->appMng(packid1)->get(0));
+    str = ((SAppInfo *)(sm.data->appMng(packid1)->get(0)))->appid;
+    qDebug() << appid << appid1;
+ 
+    EQ(appid.length(),appid1.length())
+
+U_END
+
+U_START(licLoadFiles)
+    SLicMng sm;
+    int i;
+    QString file,file1,file2,file3,str;
+    file = "./test/test_lic_task2.lic";
+    file1 = "./test/test_lic_node.lic";
+    file2 = "./test/test_lic_user.lic";
+ // load file:
+
     i = sm.loadFile(file,SERVER_PRI);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
-    LT(i ,0);
-
-    i = sm.unloadFile(file,SERVER_PRI);
+    GT(i ,0);
+    i = sm.loadFile(file1,SERVER_PRI);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
-    EQ(i ,2);
-    EQ(sm.data->mapPack.size(),0)
-    EQ(sm.data->packRemoved.size(),2)
+    GT(i ,0);
+    i = sm.loadFile(file2,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i ,0);
+ 
+    EQ(sm.data->packSize(),4)
+    QString key;
+    qDebug()  << "packges = " << sm.data->packNames();
+    key = "geoeast_pc1_1.0";
+    
+    qDebug() << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1)
+    EQ(sm.data->packMng(key)->userSize(),1)
+    EQ(sm.data->packMng(key)->nodeSize(),1)
 
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),5)
+    EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),5)
+    EQ(sm.data->packMng(key)->userUsed(),0)
+
+        key = "geoeast_pc2_1.0";
+    
+    qDebug() << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1)
+    EQ(sm.data->packMng(key)->userSize(),0)
+    EQ(sm.data->packMng(key)->nodeSize(),0)
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),0)
+    EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),0)
+    EQ(sm.data->packMng(key)->userUsed(),0)
+
+
+U_END
+
+U_START(licAppAdd)
+    SLicMng sm;
+    SAppInfo info,*pf;
+    int i;
+    QString file,str,key;
+    QString ip,pid,user,appid;
+
+    ip = "192.168.157.129";
+    pid = "1234";
+    user = "cjh";
+    appid = ip+"_"+pid;
+    //qDebug()  << "key = " << key << sm.data->mapPack.keys();
+    
+    info.set(APP_IP,ip.Q2CH);
+    info.set(APP_USER,user.Q2CH);
+    info.set(APP_PID,pid.Q2CH);
+
+    info.set(APP_VENDER,"geoeast");
+    info.set(APP_PACKAGE,"pc1");
+    info.set(APP_VERSION,"1.0");
+    info.set(APP_NUMBER,"1");
+    
+    int len,ir;
+    // node:
+    key = "geoeast_pc1_1.0";
+    PR("test 5 app spend only 1 resource=================================");
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        ir = sm.loginApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        EQ(sm.data->packMng(key)->nodeUsed(),1);
+        GT(ir,0);
+    }
+    PR("test 19  app add 19 resource node4,user5task10===========================");
+
+    len = 5+5+10;
+    for (i = 0; i <len;i++) 
+    {
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(10+i);
+        info.set(APP_IP,pid.Q2CH);
+
+        ir = sm.loginApp(info);
+        qDebug() << "node.used =" << i <<sm.data->packMng(key)->nodeUsed();
+        qDebug() << "user.used =" << i <<sm.data->packMng(key)->userUsed();
+        qDebug() << "task.used =" << i <<sm.data->packMng(key)->taskUsed();
+        if (i < 4) 
+        {
+            EQ(sm.data->packMng(key)->nodeUsed(), i + 2); 
+        }
+        else if (i >=4 && i<9)  
+        {
+            EQ(sm.data->packMng(key)->userUsed(), i -4 +1); 
+        }
+        else if (i>=9 &&i<19) 
+        {
+            EQ(sm.data->packMng(key)->taskUsed(), i -9 +1); 
+        }
+        else if (i == 19)  
+        {
+            //REM("i = 19")
+            LT(ir,0);
+            //qDebug()<< "1i =="<< i;     
+        }
+        //qDebug() <<"i = " << i;
+        if (i < 19) 
+        {
+            //qDebug() <<"i = " << i;
+           GT(ir, 0); 
+        }
+
+         qDebug() <<"i = " << i;
+    }
+
+ 
+    
+U_END
+U_START(licAppRemove)
+    SLicMng sm;
+    SAppInfo info,*pf;
+    int i ;
+    QString file,str,key;
+    QString ip,pid,user,appid;
+ 
+
+    ip = "192.168.157.129";
+    pid = "1234";
+    user = "cjh";
+    appid = ip+"_"+pid;
+    //qDebug()  << "key = " << key << sm.data->mapPack.keys();
+    
+    info.set(APP_IP,ip.Q2CH);
+    info.set(APP_USER,user.Q2CH);
+    info.set(APP_PID,pid.Q2CH);
+
+    info.set(APP_VENDER,"geoeast");
+    info.set(APP_PACKAGE,"pc1");
+    info.set(APP_VERSION,"1.0");
+    info.set(APP_NUMBER,"1");
+    
+    int len,ir;
+    // node:
+    key = "geoeast_pc1_1.0";
+  
+    #if 1
+    PR("test releast 20 app of 4node,5user,10tasts,1err=========================================================");
+    // now app:  5+4:node:129_10+i ; 10+i_10+i
+    //           5  : user:14+i_14+i
+    //           10 : task:19+i_19+i
+
+    len = 5+5+10;
+    // len =5;
+    for (i = 0; i <len;i++) 
+    {
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(10+i);
+        info.set(APP_IP,pid.Q2CH);
+
+        ir = sm.logoutApp(info);
+        qDebug() << "node.used =" << i <<sm.data->packMng(key)->nodeUsed();
+        qDebug() << "user.used =" << i <<sm.data->packMng(key)->userUsed();
+        qDebug() << "task.used =" << i <<sm.data->packMng(key)->taskUsed();
+        if (i < 4) 
+        {
+            EQ(sm.data->packMng(key)->nodeUsed(), 4-i); 
+        }
+        else if (i >=4 && i<9)  
+        {
+            EQ(sm.data->packMng(key)->userUsed(), 9 -1 -i); //????????????????????
+        }
+        else if (i>=9 && i<19) 
+        {
+            EQ(sm.data->packMng(key)->taskUsed(), 19-1 -i); 
+        }
+        else
+        {
+            LT(ir,0);  
+        }
+        if (i <19) 
+        {
+           GT(ir, 0); 
+        }
+       
+    }
+    qDebug() << "sm.data->appSize"<< sm.data->appSize();
+     EQ(sm.data->appSize(),5);
+      // release 5 node:
+    PR("test 5 app release only 1 node resource=================================");
+    ip = "192.168.157.129";
+    pid = "1234";
+    user = "cjh";
+    appid = ip+"_"+pid;
+    //qDebug()  << "key = " << key << sm.data->mapPack.keys();
+    info.set(APP_IP,ip.Q2CH);
+    info.set(APP_USER,user.Q2CH);
+    key = "geoeast_pc1_1.0";
+    
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        ir = sm.logoutApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        if (i == len -1)  
+        {
+            EQ(sm.data->packMng(key)->nodeUsed(), 0);     
+        }
+        else
+        {
+            EQ(sm.data->packMng(key)->nodeUsed(), 1);   
+        }
+        GT(ir,0);
+    }
+    #endif
+U_END
+U_START(dataLOG)
+    SLicMng sm;
+     
+
+U_END
+U_START(licAppUserAddRemove)
+    SLicMng sm;
+    SAppInfo info,*pf;
+    int i;
+    QString file,str,key;
+    QString ip,pid,user,appid;
+
+    ip = "192.168.157.129";
+    pid = "1234";
+    user = "cjh";
+    appid = ip+"_"+pid;
+    //qDebug()  << "key = " << key << sm.data->mapPack.keys();
+    
+    info.set(APP_IP,ip.Q2CH);
+    info.set(APP_USER,user.Q2CH);
+    info.set(APP_PID,pid.Q2CH);
+
+    info.set(APP_VENDER,"geoeast");
+    info.set(APP_PACKAGE,"pc1");
+    info.set(APP_VERSION,"1.0");
+    info.set(APP_NUMBER,"1");
+    
+    int len,ir;
+    // node:
+    key = "geoeast_pc1_1.0";
+    PR("test 10 app  spend 5 node and 1 user resource=================================");
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        // differnt ip,& pid; spnd 5 node 
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(10+i);
+        info.set(APP_IP,pid.Q2CH);
+        ir = sm.loginApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        EQ(sm.data->packMng(key)->nodeUsed(),i+1);
+        GT(ir,0);
+    }
+
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        // pid = 100+i,& ip = 100; spnd 5 user
+        pid = QString("%1").arg(100+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(100);
+        info.set(APP_IP,pid.Q2CH);
+        ir = sm.loginApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        EQ(sm.data->packMng(key)->userUsed(),1);
+        GT(ir,0);
+    }
+    PR("test release 10 app  5 node and 1 user resource=================================");
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        // differnt ip,& pid; spnd 5 node 
+        pid = QString("%1").arg(10+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(10+i);
+        info.set(APP_IP,pid.Q2CH);
+        ir = sm.logoutApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        EQ(sm.data->packMng(key)->nodeUsed(),len -i - 1);
+        GT(ir,0);
+    }
+
+    len = 5;
+    for (i = 0; i <len;i++) 
+    {
+        // pid = 100+i,& ip = 100; spnd 5 user
+        pid = QString("%1").arg(100+i);
+        info.set(APP_PID,pid.Q2CH);
+        pid = QString("%1").arg(100);
+        info.set(APP_IP,pid.Q2CH);
+        ir = sm.logoutApp(info);
+        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+        if (i == len -1) 
+        {
+            EQ(sm.data->packMng(key)->userUsed(), 0);
+        }
+        else
+        {
+            EQ(sm.data->packMng(key)->userUsed(), 1);
+        }
+         
+        GT(ir,0);
+    }
 U_END
 M_START
 #if 0
-    //testCrypt();// in .cpp
+    testCrypt();// in .cpp
     U_TEST(Qlist_remove_ptr)
     U_TEST(basInfo)
     U_TEST(licfile)
@@ -383,8 +786,25 @@ M_START
     U_TEST(testMid)
     U_TEST(testUUID)
     U_TEST(testCREATEKEY)
+    U_TEST(SLicMngLoadFile)
+    U_TEST(SLicMngApp)
+    U_TEST(testLOG)
+    U_TEST(licLoadFiles)
+    U_TEST(licAppAdd)
+    //U_TEST(dataLOG)
+    U_TEST(licAppRemove)
+    U_TEST(licAppUserAddRemove)
+#else 
+   
+     U_TEST(licLoadFiles)
+     U_TEST(licAppAdd)
+     U_TEST(licAppRemove)
+     U_TEST(licAppUserAddRemove)
+      U_TEST(testLOG)
+   
+    
+    
 #endif 
-U_TEST(SLicMngLoadFile)
  
      
       

@@ -1,8 +1,241 @@
 #include "SPackMng.h"
-
-SPackMng::SPackMng():LInfoMng()
+//====================PResource:
+PResource::PResource()
 {
-    init();
+   limit = 0;
+   used = 0;
+}
+int PResource::size()
+{
+   return pList.size();
+}
+int PResource::add(SPackInfo *info)
+{
+   int i;
+   i = -1;
+   if (info == NULL) return i;
+   info->start = limit;
+   limit = limit + info->limit;
+   //ok:
+   pList.append(info);
+   i = pList.size();
+   return i;
+
+}
+int PResource::remove(SPackInfo *inf)
+{
+   int i;
+   i = -1;
+   if (inf == NULL) return i;
+   SPackInfo *info;
+   info = find(inf);
+   if (info == NULL) return i;
+
+   if (pList.removeOne(inf))
+   { // remove in Presource:
+      limit = limit - inf->limit;
+      for (i = 0; i < size(); i++)
+      {
+         info = pList[i];
+         if (info->start >= limit)
+         {
+            info->start = info->start - limit;
+         }
+      }
+      i = 1;
+   }
+   else
+   {
+       i = -1;
+   }
+   return i;
+
+}
+SPackInfo* PResource::getInfo(int used)
+{
+   int i, sz, start, limit;
+   SPackInfo *info;
+   sz = pList.size();
+   for (i = 0; i < sz; i++)
+   {
+      info = pList[i];
+      start = info->start;
+      limit = info->limit;
+      if (used >= start && used <= start + limit)
+      {
+         return info;
+      }
+   }
+   return NULL;
+}
+SPackInfo* PResource::find(SPackInfo *inf)
+{
+   int i, sz;
+   SPackInfo *info;
+   sz = pList.size();
+   for (i = 0; i < sz; i++)
+   {
+      info = pList[i];
+      if (info == inf)
+      {
+         return inf;
+      }
+   }
+   return NULL;
+}
+/// @return i>=0 OK <0 error
+int  PResource::appRequest(SAppInfo& info, SAppMng *mng)
+{
+   if (size() <= 0)  return -1;
+   if (limit - used <= 0) return -1;
+
+//qDebug()<< "in presource0";
+   int i, sz, left, number;
+   SPackInfo *pinfo;
+   QString packid, appid, ty, ip, user;
+//qDebug()<< "in presource0";
+   i = -1;
+   number = info.number;
+   left = limit - used;
+   if (number > left)  return -1;
+// ok;
+   sz = pList.size();
+   pinfo = pList[0];// we can return app the wrong BORROW;
+   //ty = pinfo->get(PTYPE).toString();
+   //info.set(PTYPE, ty); // assign type;
+   //info.rtype = ty;
+  // qDebug()<< "in presource0";
+
+   ty = type;
+   info.rtype = ty;
+// return message:
+   info.set(APP_VENDERSIGN, pinfo->get(VENDERSIGN));
+   info.set(APP_PBORROW, pinfo->get(PBORROW));
+   info.set(PTYPE, pinfo->get(PTYPE));
+
+   qDebug() <<  "appRequest ty = " << ty;
+  // qDebug() <<  "pinfo== " << pinfo->getText();
+   i = number;
+   if (mng == NULL)
+   {
+      used = used + number;
+   }
+   else
+   {
+      // task:
+      if (ty == PTYPE_TASK)
+      {
+         used = used + number;
+      }
+      //node:
+      else if (ty == PTYPE_NODE)
+      {
+//qDebug() <<  "pinfo== " ;
+         ip = info.get(APP_IP).toString();
+         //qDebug() << "Preaource :node mng.find=" << i << PTYPE_NODE << ip;
+         i = mng->find(PTYPE, PTYPE_NODE, APP_IP, ip); // user
+         //qDebug() << "Preaource :node mng.find=" << i << PTYPE_NODE << ip;
+         //qDebug() << mng->size()<< mng->getText();
+         if (i < 0)
+         {
+            used = used + number;
+         }
+         else
+             i = 0;
+         //rnode.remove(info);
+      }
+      // user +ip
+      else if (ty == PTYPE_USER)
+      {
+         ip = info.get(APP_IP).toString();
+         user = info.get(APP_USER).toString();
+         i = mng->find(PTYPE, PTYPE_USER, APP_IP, ip, APP_USER, user); // ip + user
+         if (i < 0)
+         {
+            used = used + number;
+         }
+         else
+             i = 0;
+      }
+   }
+//qDebug() << "11111";
+   return number;
+}
+///  @return i>=0 OK <0 error
+int  PResource::appRelease(SAppInfo& info, SAppMng *mng)
+{
+   //if (size() <= 0)  return -1;  // mybe package removed all
+  // if (limit - used <= 0) return -1; // we not care 
+
+   int i,  number;
+   //SPackInfo *pinfo;
+   QString packid, appid, ty, ip, user,err;
+
+   i = -1;
+   number = info.number;// release number
+
+ //  sz = pList.size();// packages
+    ty = type;
+
+//   if(!(ty == info.rtype)) return -1; // not the resource type;
+
+// right resource now:
+
+   qDebug() <<  "appRelease ty = " << ty;
+#if 0
+   // remove info from the SappMng:
+   i = ((LInfoMng *)(mng))->rmInfo(&info); //donot remove it now;;
+   if (i <=0) 
+   {
+       err = QString("Error: Resource::appRelease ") +  "((LInfoMng *)(mng))->rmInfo(&info)";
+       info.err = err;
+   }
+   else
+
+   {
+#endif
+      // task:
+      if (ty == PTYPE_TASK)
+      {
+         used = used - number;
+      }
+      //node:
+      else if (ty == PTYPE_NODE)
+      {
+
+         ip = info.get(APP_IP).toString();
+         i = mng->find(PTYPE, PTYPE_NODE, APP_IP, ip); // user
+         if (i < 0)// no package runing in that node;
+         {
+            used = used - number;
+         }
+         else
+             i = 0;
+         //rnode.remove(info);
+      }
+      // user +ip
+      else if (ty == PTYPE_USER)
+      {
+         ip = info.get(APP_IP).toString();
+         user = info.get(APP_USER).toString();
+         i = mng->find(PTYPE, PTYPE_USER, APP_IP, ip, APP_USER, user); // ip + user
+         if (i < 0)// for user no package runing in my node;
+         {
+            used = used - number;
+         }
+         else
+             i = 0;
+      }
+//   }
+
+   return number;
+}
+//----------------
+
+
+SPackMng::SPackMng() : LInfoMng()
+{
+   init();
 }
 SPackMng::~SPackMng()
 {
@@ -11,32 +244,202 @@ SPackMng::~SPackMng()
 
 void SPackMng::init()
 {
+     rtask.type = PTYPE_TASK;
+     ruser.type = PTYPE_USER;
+     rnode.type = PTYPE_NODE;
+}
+// -----------------rsize()-------------------------
+int SPackMng::taskSize()
+{
+    return rtask.size();
+}
+
+int SPackMng::userSize()
+{
+    return ruser.size();
 
 }
-int SPackMng::request(QString ip,QString pid, QString user,int number)
+int SPackMng::nodeSize()
 {
-    #if 0
-    _lock.lock();
-    SPakcInfo *info;
-    int i,sz,left,ret;
-    int n,bn;
-    n = 0;// number of
-    bn = 0;
+    return rnode.size();
+}
+// limit----------
+int SPackMng::taskLimit()
+{
+    return rtask.limit;
+}
 
-    sz = mng->size();
-// if individual enough
-    for (i = 0; i <sz;i++) 
-    {
-        info = mng->get(i);
-        left = info->limit - info->used;
-        if (left >= number) 
-        {
-            ret = number;
-            break;
-        }
-    }
+int SPackMng::userLimit()
+{
+    return ruser.limit;
 
-    _lock.unlock();
-    #endif
+}
+int SPackMng::nodeLimit()
+{
+    return rnode.limit;
+}
+// used----------
+int SPackMng::taskUsed()
+{
+    return rtask.used;
+}
+
+int SPackMng::userUsed()
+{
+    return ruser.used;
+
+}
+int SPackMng::nodeUsed()
+{
+    return rnode.used;
+}
+
+//----------------------------------------------
+int SPackMng::removeInfo(SPackInfo *info)
+{
+   /////////
+   int  ret;
+   QString ty,str;
+   //SPackInfo *inf;
+   _lock.lock();
+   ret = rmInfo(info); // in main mng,
+   if (ret  > 0)
+   { // in resource
+      ty = info->get(PTYPE).toString();
+      if (ty == PTYPE_TASK)
+      {
+         ret = rtask.remove(info);
+      }
+      else if (ty == PTYPE_NODE)
+      {
+         ret = rnode.remove(info);
+      }
+      else if (ty == PTYPE_USER)
+      {
+         ret = ruser.remove(info);
+      }
+      if (ret < 0)
+      {
+         str = "SPackMng::removeInfo: Remove info  From Presource Error ty =" + ty;
+         info->err = str;
+      }
+   }
+   else
+   {
+      str = "SPackMng::removeInfo: Remove info Error";
+      info->err = str;
+   }
+   _lock.unlock();
+   return ret;
+}
+/// add a package
+int SPackMng::addInfo(SPackInfo *info)
+{
+   int i, ir;
+   QString ty,str;
+   _lock.lock();
+
+   i = add(info);
+   qDebug() << "SPackMng::addInfo i=" << i;
+   ir = 0;
+   if (i  > 0)
+   {
+      ty = info->get(PTYPE).toString();
+      qDebug() << "ty=" << ty;
+      if (ty == PTYPE_TASK)
+      {
+         ir = rtask.add(info);
+      }
+      else if (ty == PTYPE_NODE)
+      {
+         ir = rnode.add(info);
+      }
+      else if (ty == PTYPE_USER)
+      {
+         ir = ruser.add(info);
+      }
+      else
+      {
+         ir = rtask.add(info);
+      }
+      if (ir < 0)
+      {
+         str = "SPackMng::addInfo: add info  to Presource Error ty =:" + ty;
+         info->err = str;
+      }
+   }
+   else
+   {
+      str = "SPackMng::addInfo error";
+      info->err =str;
+   }
+   _lock.unlock();
+   return ir;
+}
+/// @return i>=0 ok ;
+int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
+{
+
+   _lock.lock();
+   QString str;//, packid, appid;
+   int i;//, number;
+   if (mng !=NULL) 
+   {
+       if (mng->find(info.appid)>=0) 
+       {
+           info.err =" the app already registered appid = "+info.appid;
+           return -1;
+       }
+   }
+   //packid = info.packid;
+   //number = info.number;
+   //appid = info.appid;
+   i = -1;
+   //qDebug() << "mng apprequest0";
+   i = rnode.appRequest(info, mng);// >=0 is ok; == 0 means for node&user,nothing changed resource number for this app
+   //qDebug() << "mng apprequest1";
+   if (i <0) i = ruser.appRequest(info, mng);
+   if (i <0) i = rtask.appRequest(info, mng); 
+
+   if (i < 0)
+   {
+      str = "SPackMng::appRequest:  no lisense space error";
+      info.err = str;
+   }
+   _lock.unlock();
+   return i;
+
+}
+/// @return i>=0 ok ;
+int SPackMng::appRelease(SAppInfo& info, SAppMng *mng)
+{
+
+   _lock.lock();
+   QString str;//, packid, appid;
+   int i;//, number;
+   //packid = info.packid;
+   //number = info.number;
+   //appid = info.appid;
+   i = -1;
+   if (info.rtype== PTYPE_NODE) 
+   {
+       i = rnode.appRelease(info, mng); 
+   }
+   else if (info.rtype == PTYPE_USER) 
+   {
+        i = ruser.appRelease(info, mng);
+   }
+   else if (info.rtype == PTYPE_TASK) 
+   {
+        i = rtask.appRelease(info, mng);
+   }
+ 
+   if (i < 0)
+   {
+      str = "SPackMng::appRelease:  failed error";
+      info.err += str;
+   }
+   _lock.unlock();
+   return i;
 
 }

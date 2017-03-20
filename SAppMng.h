@@ -15,6 +15,7 @@ class SAppMng : public LInfoMng
 public:
     SAppMng();
     ~SAppMng();
+    //QString packid;
   
 private:
     void init();

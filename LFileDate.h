@@ -45,8 +45,11 @@ public:
     QString curTMS();
     QString curD();
 
-    qint64 sEP();
-    qint64 msEP();
+    long sEP();
+    long msEP();
+    QString sEPS();
+    QString msEPS();
+    QString EP2DT(long s);
 
     QString DT(QDateTime t);
 private:

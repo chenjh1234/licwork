@@ -13,9 +13,6 @@
 #include "LVenderDef.h"
 #include "LPackageDef.h"
 
-#define LIC_FILE_SAMPLE "licfile.sample"
-#define LIC_FILE "licfile.lic"
-#define LIC_FILE1 "licfile1.lic"
 
 #define ENDL "\n"
 #define REM_CHAR "#"   //for comment

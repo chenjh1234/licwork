@@ -8,7 +8,7 @@ SLicMng::SLicMng()
 }
 SLicMng:: ~SLicMng()
 {
-
+    qDebug() << " end of licMng=======";
 }
 void SLicMng::init()
 {
@@ -35,7 +35,7 @@ int SLicMng::loginApp(SAppInfo& msg)
 
 int SLicMng::logoutApp(SAppInfo& msg)
 {
-   return 0;
+   return data->rmApp(msg);
 }
 
 //
@@ -116,7 +116,7 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    QString str, venderKey, pKey, venderSign, uuid, smid, venderName;
    bool b;
    num = checkLicFile(filename, serverPri);
-   if (num <= 0)  return i;
+   if (num <= 0)  return num;
 
 // readfile:
    i = licFile.readFile(filename);
@@ -124,6 +124,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    infoV = licFile.vender();
    uuid = infoV->get(UUID).toString();
    venderName = infoV->get(VENDERNAME).toString();
+   lic.isVenderKeyValid(serverPri, infoV);// we do not if
+   venderSign = lic.getVenderSign(); //  isVenderKeyValid make it available
 
 // insert to Data:
    SPackInfo *infoSP;
@@ -152,10 +154,9 @@ int SLicMng::loadFile(QString filename, QString serverPri)
 
       // qDebug() << "uuid ===" <<  infoSP->getText();
 
-      packid = data->encodePackageName(venderName, pname, version);
+      packid = data->encodePackageId(venderName, pname, version);
       infoSP->packid = packid;
       infoSP->limit =  infoSP->get(PLIMIT).toInt();
-      infoSP->used =  0;
       // is UUID exist:
       if (i == 0)
       {
@@ -178,12 +179,11 @@ int SLicMng::unloadFile(QString filename, QString serverPri)
    int i, ret, num;
    LLicFile licFile;
    LLicEncrypt lic;
-   LInfo *infoP,*infoV;
+   LInfo *infoV;
    LEncrypt en;
    QString str, venderKey, pKey, venderSign, uuid, smid, venderName;
-   bool b;
    num = checkLicFile(filename, serverPri);
-   if (num <= 0)  return i;
+   if (num <= 0)  return num;
 
    // readfile:
    i = licFile.readFile(filename);

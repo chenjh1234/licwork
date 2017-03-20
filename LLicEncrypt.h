@@ -7,10 +7,7 @@
 #include "LEncrypt.h"
 
 #define MID_LEN 35
-#define SERVER_PUB "server.pub"
-#define SERVER_PRI "server.pri"
-#define VENDER_PUB "vender.pub"
-#define VENDER_PRI "vender.pri"
+
 
 #define VENDER_DELIMIT "%%"
 

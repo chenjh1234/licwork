@@ -199,6 +199,22 @@ QString LInfoMng::getText(char ** cc)
     }
     return ret;
 }
+QString LInfoMng::getText()
+{
+    QString str,ret;
+    int i;
+    LInfo *info;
+    ret = "";
+    qDebug() << "size = " << size();
+    for (i = 0; i <size(); i++) 
+    {
+        qDebug() << i;
+        info = get(i);
+        str = info->getText();
+        ret  = ret + str;
+    }
+    return ret;
+}
 /// remove by Info,return index of the info 
 int LInfoMng::rmInfo(LInfo *info)
 {
@@ -216,14 +232,22 @@ int LInfoMng::rmInfo(LInfo *info)
     }
     return -1;
 }
-/// rm info by nameid ; and release the info space 
+/// rm info by nameid  
+int LInfoMng::rmInfo(QString name)
+{
+    int idx;
+    idx = find(name.Q2CH);
+    return rmInfo(idx);
+}
+/// rm info by nameid  
 int LInfoMng::rmInfo(char *name)
 {
     int idx;
     idx = find(name);
     return rmInfo(idx);
 }
-/// rm info by idx; and release the info space 
+/// rm info by idx; 
+///@return the size of Mng
 int LInfoMng::rmInfo(int idx)
 {
    LInfo *info;

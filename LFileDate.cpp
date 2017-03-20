@@ -170,16 +170,40 @@ QString LFileDate::curT()
     return curDT( ).mid(8,6);
 }
 /// counter of S since EP
-qint64 LFileDate::sEP()
+long LFileDate::sEP()
 {  
     return msEP()/1000;
 }
 /// counter of MS since EP
-qint64 LFileDate::msEP()
+long LFileDate::msEP()
 {
     QDateTime dt;
     dt = dt.currentDateTime();
     return dt.toMSecsSinceEpoch();
+}
+/// counter of S since EP
+QString LFileDate::sEPS()
+{  
+    long d;
+    QString str;
+    d =msEP();
+    str.setNum(d);
+    return str;
+}
+/// counter of MS since EP
+QString LFileDate::msEPS()
+{
+    long d;
+    QString str;
+    d = msEP();
+    str.setNum(d);
+    return str;
+}
+QString LFileDate::EP2DT(long d)
+{
+    QDateTime dt;
+    dt.setTime_t(d);
+    return DT(dt);  
 }
      
 #if 0
