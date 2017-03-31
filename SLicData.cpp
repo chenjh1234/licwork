@@ -29,7 +29,10 @@ int SLicData::packSize()
 /// package manager identified by pack id:
 SPackMng* SLicData::packMng(QString packid)
 {
-   return mapPack[packid];
+    if (mapPack.contains(packid))  
+        return mapPack[packid]; 
+    else
+        return NULL;
 }
 /// package names in this db
 QStringList SLicData::packNames()
@@ -63,7 +66,10 @@ int SLicData::appSize()
 /// app managers
 SAppMng* SLicData::appMng(QString packid)
 {
-   return mapApp[packid];
+     if (mapApp.contains(packid))  
+        return mapApp[packid]; 
+    else
+        return NULL;
 }
 /// app packs
 QStringList SLicData::appPacks()
@@ -72,6 +78,11 @@ QStringList SLicData::appPacks()
    slist = mapApp.keys();
    return slist;
 }
+int SLicData::appPackSize()
+{
+   return mapApp.size();
+}
+//=================================borrow=====================
 int SLicData::borrow(SPackInfo *pack)
 {
     QString str,packid,dt;
@@ -387,7 +398,7 @@ int SLicData::registerApp(SAppInfo& info)
    SPackMng *mng;
    SAppMng *appmng;
    packid = info.packid;
-   //qDebug() << "packid=" << packid;
+   qDebug() << "packid=" << packid;
 
    i = -1;
    if (isPackidInPack(packid))
@@ -480,7 +491,7 @@ int SLicData::addApp(SAppInfo& ainfo)
    pid = info->get(APP_PID).toString();
    user = info->get(APP_USER).toString();
    //qDebug() << "packid00=" << vender << package << version ;
-   // qDebug() << "info=" << info->getText();
+   qDebug() << "info=" << info->getText();
    // qDebug() << "ainfo=";// << ainfo.getText();
    packid = encodePackageId(vender, package, version);
 
@@ -490,7 +501,7 @@ int SLicData::addApp(SAppInfo& ainfo)
    info->user = user;
    info->nameid = info->appid;
    info->start = fd.sEP();
-   //qDebug() <<  "i0 =registerApp( *info); =" << i;
+  // qDebug() <<  "i0 =registerApp( *info); =" << i;
 
    i = registerApp(*info);
 
@@ -679,31 +690,35 @@ int SLicData::saveDB()
    QDataStream ds(&file);
 // pack:
    SPackMng *pmng;
-   slist = mapPack.keys();
+   slist = packNames();
    ds << slist;
 
-   sz = mapPack.size();
+   sz = packSize();
    for (i = 0; i < sz; i++)
    {
       pmng = mapPack[slist[i]];
       pmng->encode(ds);
    }
-
+//qDebug() << " save pack ok sz = " << sz;
 // app:
    SAppMng *amng;
-   slist = mapApp.keys();
+   slist = appPacks();
    ds << slist;
 
-   sz = mapApp.size();
+   sz = appPackSize();
+   //qDebug() << "appsize = " <<sz;
    for (i = 0; i < sz; i++)
    {
+     //  qDebug() << i << slist[i];
       amng = mapApp[slist[i]];
-      amng->encode(ds);
+     // qDebug() << i << slist[i] << amng;
+      if (amng != NULL)  
+          amng->encode(ds); 
    }
 // close
    file.flush();
    file.close();
-
+qDebug() << " save app ok";
    return saveDBMsg();
 }
 
@@ -720,7 +735,7 @@ int SLicData::saveDBMsg()
 
    QString fpath, fcdate, fmds5, finode, fsz;
    QFileInfo fi(fileDB);
-
+//qDebug() << " save DBMsg";
    fpath = fi.absoluteFilePath();
    fcdate = _dt.TID(fileDB);
    fmds5 = _dt.mds5(fileDB);

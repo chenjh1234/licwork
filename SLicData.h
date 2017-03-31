@@ -75,6 +75,7 @@ public:
     int releaseApp( SAppInfo & info);
     //
     int appSize();/// all apps registerd in the DB
+    int appPackSize();
     QStringList appPacks();/// packages used of all registed apps.
     SAppMng * appMng(QString packid); //
 

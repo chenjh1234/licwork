@@ -379,6 +379,10 @@ QStringList SLicMng::reportPackage(QString pack)
     SPackMng *mng;
     SPackInfo *info;
     QString name,ty,size,str,limit,start,end;
+    int len1,len2,len3;
+    len1 = 10;
+    len2 = 20;
+    len3 = 25;
      
   
     mng = data->packMng(pack);
@@ -387,7 +391,7 @@ QStringList SLicMng::reportPackage(QString pack)
 
     szp = mng->size(); 
         // packID sizeInfo limitTask used Nodelimit used UserLimit used
-        str = QString("%1 %2 %3 %4 %5 %6 %7 %8").arg(pack,20).arg(szp,10).arg(mng->taskLimit(),10).arg(mng->taskUsed(),10).arg(mng->nodeLimit(),10).arg(mng->nodeUsed(),10).arg(mng->userLimit(),10).arg(mng->userUsed());
+        str = QString("%1 %2 task(%3,%4) node(%5,%6) user(%7,%8)").arg(pack,len3).arg(szp,len1).arg(mng->taskLimit()).arg(mng->taskUsed()).arg(mng->nodeLimit()).arg(mng->nodeUsed()).arg(mng->userLimit()).arg(mng->userUsed());
         slist << str;
         for (j = 0; j < szp; j++) 
         {
@@ -397,7 +401,7 @@ QStringList SLicMng::reportPackage(QString pack)
             start = info->get(PSTARTDATE).toString();
             end = info->get(PENDDATE).toString();
             limit = info->get(PLIMIT).toString();
-            str = QString("%1 %2 %3 %4 %5 ").arg(pack,20).arg(ty,10).arg(limit,10).arg(start,10).arg(end ,10);
+            str = QString("%1 %2 %3 %4 %5 ").arg(pack,len3).arg(ty,len1).arg(limit,len1).arg(start,len3).arg(end ,len3);
             slist << str;
         }
  
@@ -434,6 +438,10 @@ QStringList SLicMng::reportApp(QString pack)
     QString appid,user,ty,str,start;
     //long start;
     LFileDate fd;
+   int len1,len2,len3;
+    len1 = 10;
+    len2 = 20;
+    len3 = 25;
      
   
     mng = data->appMng(pack);
@@ -450,7 +458,7 @@ QStringList SLicMng::reportApp(QString pack)
             start = fd.EP2DT(info->start);
             ty = info->rtype;
             number = info->number;
-            str = QString("%1 %2 %3 %4 %5 %6").arg(pack,20).arg(appid,10).arg(user,10).arg(number,10).arg(ty,10).arg(start,10);
+            str = QString("%1 %2 %3 %4 %5 %6").arg(pack,len3).arg(appid,len2).arg(user,len1).arg(number,len1).arg(ty,len1).arg(start,len3);
             slist << str;
         }
  

@@ -744,8 +744,10 @@ U_START(licAppUserAddRemove)
         info.set(APP_PID,pid.Q2CH);
         pid = QString("%1").arg(10+i);
         info.set(APP_IP,pid.Q2CH);
+        //qDebug() << i <<"1111111";
         ir = sm.loginApp(info);
-        qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
+         qDebug() <<i<<  ir;
+        //qDebug() << "node.used =" << sm.data->packMng(key)->nodeUsed();
         EQ(sm.data->packMng(key)->nodeUsed(),i+1);
         GT(ir,0);
     }
@@ -951,6 +953,25 @@ U_START(borrowLic)
         qDebug() << i << slist[i];
     }
 U_END
+U_START(reportPackApp)
+    SLicMng sm;
+    QStringList slist;
+    int i;
+    slist = sm.reportPackage();
+    GT(slist.size(),0);
+
+    for (i = 0; i <slist.size();i ++) 
+    {
+        qDebug() << QString("%1").arg(i,10) << slist[i];
+    }
+    slist = sm.reportApp(); 
+    GT(slist.size(),0);
+    for (i = 0; i <slist.size();i ++) 
+    {
+        qDebug() << QString("%1").arg(i,10) << slist[i];
+    }
+    
+U_END
 M_START
 #if 0// whole test of 
 #if 1
@@ -977,6 +998,8 @@ M_START
     U_TEST(LoadFiles)
     U_TEST(checkLoadFiles)
     U_TEST(licAppAdd)
+    U_TEST(CkeckAppAdd)
+    U_TEST(reportPackApp)
     //U_TEST(dataLOG)
     U_TEST(licAppRemove)
     U_TEST(licAppUserAddRemove)
@@ -989,8 +1012,9 @@ M_START
      U_TEST(checkLoadFiles)
      U_TEST(licAppAdd)
      U_TEST(CkeckAppAdd)
+     U_TEST(reportPackApp)
  
-     U_TEST(saveDB)
+     U_TEST(saveDB)// save and clear  
      U_TEST(loadDB)
      U_TEST(checkLoadFiles)
      U_TEST(CkeckAppAdd)
@@ -998,16 +1022,11 @@ M_START
      U_TEST(licAppUserAddRemove)
 // end of test sace load DB---------------
 #endif
-
+ 
 
 
 #endif// end of whole  test 
-#if 1
-     U_TEST(dataClear)
-     U_TEST(LoadFiles)
-     U_TEST(checkLoadFiles)
-     U_TEST(borrowLic)
-#endif
-     
+
+ 
       
 M_END

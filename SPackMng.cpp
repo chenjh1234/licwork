@@ -511,17 +511,23 @@ int SPackMng::decode(QDataStream& ds)
 /// @return i>=0 ok ;
 int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
 {
+    //qDebug() << __FUNCTION__;
 
    _lock.lock();
    QString str; //, packid, appid;
    int i; //, number;
+   //qDebug() << " over lock";
    if (mng != NULL)
    {
+       qDebug() << "id = " << info.appid;
       if (mng->find(info.appid) >= 0)
       {
+         //qDebug() << "mng find the appid = " << info.appid;
          info.err = " the app already registered appid = " + info.appid;
+         _lock.unlock();
          return -1;
       }
+       qDebug() << "no this id ";
    }
    //packid = info.packid;
    //number = info.number;
@@ -529,7 +535,7 @@ int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
    i = -1;
    //qDebug() << "mng apprequest0";
    i = rnode.appRequest(info, mng); // >=0 is ok; == 0 means for node&user,nothing changed resource number for this app
-                                    //qDebug() << "mng apprequest1";
+                                   qDebug() << "mng apprequest1";
    if (i < 0) i = ruser.appRequest(info, mng);
    if (i < 0) i = rtask.appRequest(info, mng);
 
