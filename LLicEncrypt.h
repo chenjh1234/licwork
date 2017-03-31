@@ -42,6 +42,7 @@ public:
         @param infoVender  is from LLicFile
     */ 
     QString encryptVenderKey(QString ServerPub, QString venderPri, LInfo *infoVender,QString venderSeed);
+    QString encryptVenderKey(QString ServerPub,LInfo *infoVender,QString venderSign);// for borrow
     //QString encryptVenderKey(QString ServerPub,QString venderSign, LInfo * infoVender);
      /// sign venderSeed+serverPubKey with venderPriKeyfile and encodeHex : Vpri(Spub,VenderSeed)  
     QString signVenderSeed(QString venderPri,QString venderSeed,QString serverPub); 

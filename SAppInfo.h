@@ -26,8 +26,8 @@
 //#define APP_TYPE "ptype"
 
 
-#define APP_HB  30
-#define CHECK_HB 30*5
+#define APP_HB  30 //S
+#define CHECK_HB 30*6 //180S = 3M
 
 #if 0
 #define APP_RTYPE_TASK 0
@@ -46,6 +46,8 @@ public:
     ~SAppInfo();
     int appHB();
     bool checkHB();
+    int encode(QDataStream& ds);
+    int decode(QDataStream& ds);
     QString packid;// vender+package+version
     QString appid;// ip+pid;
     QString user;// ip+pid;
@@ -55,6 +57,7 @@ public:
     QString rtype;//APP_TYPE:PTYPE_NODE:TYPE_TASK:PTYPE_USER
     QString err;
     int ret;
+
   
 private:
     void init();

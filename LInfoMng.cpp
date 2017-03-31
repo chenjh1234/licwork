@@ -152,6 +152,34 @@ QString LInfo::getText(char ** array)
     return ret;
     
 }
+void LInfo::encode(QDataStream &ds)
+{
+    int i;
+    QStringList slist;
+    slist = nameList();
+
+    ds << size();
+    ds << nameid;
+    for(i = 0; i < size();i++)
+    {
+        ds << slist[i] << get(slist[i]).toString();
+    }
+ 
+}
+void LInfo::decode(QDataStream &ds)
+{
+    int i,sz;
+    QStringList slist;
+    QString s1,s2;
+    slist = nameList();
+    ds >> sz;
+    ds >> nameid;
+    for(i = 0; i < sz ;i++)
+    {
+        ds >>s1>>s2;
+        set(s1,s2);
+    }
+}
 // infomng:==========================================================
 LInfoMng::LInfoMng()
 {
@@ -475,6 +503,46 @@ LInfoMng & LInfoMng::operator= (LInfoMng  &mng)
     //qDebug() << "ret size = " << ret.size();
     //qDebug() << "ret  " << ret.size();
  
+}
+int LInfoMng::encode(QDataStream &ds)
+{
+    int i;
+    LInfo *info;
+
+    ds << size();
+    for(i = 0; i < size();i++)
+    {
+        info = get(i);
+        if (info !=NULL) 
+        {
+            info->encode(ds);
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    return size();
+ 
+}
+int LInfoMng::decode(QDataStream &ds)
+{
+    int i,sz;
+    LInfo *info;
+
+    ds >>sz;
+    for(i = 0; i <sz ;i++)
+    {
+        info = new LInfo();
+        if (info !=NULL) 
+        {
+            info->decode(ds);
+            if (info == NULL) return -1;
+            if (add(info) <= 0) return -1; 
+        }
+        else return -1;
+    }
+    return sz;
 }
 #if 0 //  if one of the info has the key : means the key exist
 bool LInfoMng::isKeysExist( char ** ch)

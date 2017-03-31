@@ -32,6 +32,13 @@ void exitM(int id)
 
 }
 #ifndef TEST_UNIT
+#define SERVER_PUB "server.pub"
+#define SERVER_PRI "server.pri"
+#define VENDER_PUB "vender.pub"
+#define VENDER_PRI "vender.pri"
+
+#define LIC_FILE_SAMPLE "licfile.sample"
+
 main(int argc, char **argv)
 {
 #else

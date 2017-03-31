@@ -10,7 +10,7 @@ SLicData ::SLicData()
    s = "56789111";
    _elog.tline("9999999");
    _elog.ts(s);
-    s = "567890";
+   s = "567890";
    elog(s);
    //_elog<< "1234567----"<<endl;
 #endif
@@ -18,7 +18,7 @@ SLicData ::SLicData()
 }
 SLicData::~SLicData()
 {
-    qDebug() << " =======end of licData=======";
+   qDebug() << " =======end of licData=======";
 }
 // ===================pack ===========
 
@@ -26,46 +26,119 @@ int SLicData::packSize()
 {
    return mapPack.size();
 }
+/// package manager identified by pack id:
 SPackMng* SLicData::packMng(QString packid)
 {
    return mapPack[packid];
 }
+/// package names in this db
 QStringList SLicData::packNames()
 {
    QStringList slist;
    slist = mapPack.keys();
    return slist;
 }
+/// removed packge size;in this session
 int SLicData::removedSize()
 {
    return packRemoved.size();
 }
 //------------ -----------------------app-----------------
+/// all apps in the DB
 int SLicData::appSize()
 {
    //return mapApp.size();
-    int i,sz,ret;
-    sz = mapApp.size();
-    QStringList slist;
-    slist = mapApp.keys();
-    ret = 0;
-    for (i = 0;i < sz;i++) 
-    {
-        ret += mapApp[slist[i]]->size();
+   int i, sz, ret;
+   sz = mapApp.size();
+   QStringList slist;
+   slist = mapApp.keys();
+   ret = 0;
+   for (i = 0; i < sz; i++)
+   {
+      ret += mapApp[slist[i]]->size();
 
-    }
-    return ret;
+   }
+   return ret;
 }
+/// app managers
 SAppMng* SLicData::appMng(QString packid)
 {
    return mapApp[packid];
 }
+/// app packs
 QStringList SLicData::appPacks()
 {
    QStringList slist;
    slist = mapApp.keys();
    return slist;
 }
+int SLicData::borrow(SPackInfo *pack)
+{
+    QString str,packid,dt;
+    // found package for borrow
+    /// packid,borrow,type,uuid,limit,date,left
+    int i,sz,left;
+    SPackMng* mng;
+    mng = packMng(pack->packid);
+    if (mng == NULL)  
+    {
+        pack->ret = -1;
+        pack->err = " Error : cant not found packid:" + pack->packid;
+        return -1;
+    }
+    // fonnd mng:
+    sz = mng->size();
+    SPackInfo *info;
+    dt = _dt.curDT();
+
+    for (i = 0; i < sz; i++) 
+    {
+        info = (SPackInfo*) mng->get(i);
+        if (info == NULL ) continue;
+        if (info->get(BORROW).toString() != BORROW_YES) continue;
+        if (info->get(PTYPE).toString() != pack->get(PTYPE).toString()) continue;
+        if (info->get(UUID).toString() != pack->get(UUID).toString()) continue;
+        if (info->limit <= pack->limit) continue;
+        if (dt < pack->get(PSTARTDATE).toString() || dt > pack->get(PENDDATE).toString() ) continue; // today:
+        if (pack->get(PSTARTDATE).toString() < info->get(PSTARTDATE).toString() ||  pack->get(PENDDATE).toString() > info->get(PENDDATE).toString() ) continue; // today:
+        left = (mng->getPResource(pack->get(PTYPE).toString()))->limit - (mng->getPResource(pack->get(PTYPE).toString()))->used;
+        if (left >= pack->limit) 
+        { 
+            // yes: found it:
+            //limit = limit *-1
+            str = pack->get(PLIMIT).toString();
+            str = "-"+str;
+            pack->set(PLIMIT,str);
+            pack->limit = -1*pack->limit;
+            // vendersign:
+            str = info->get(VENDERSIGN).toString();
+            pack->set(VENDERSIGN,str);
+            // pborrow:
+            str = info->get(PBORROW).toString();
+           
+            pack->set(PBORROW,str);
+            // add a -limit pacakge:
+            left = addPackage(pack);
+            if (left < 0) 
+            {
+                pack->err = " Error : cant not found package that have enouph license left:" + pack->packid;
+            }
+            // log:
+            pack->ret = left;
+            plog(pack,"borrow");
+            return left;
+        }
+    }
+    pack->ret = -1;
+    pack->err = " Error : cant not found package that have enouph license left:" + pack->packid;
+    plog(pack,"borrow");
+    return -2;
+}
+int SLicData::borrowReturn(SPackInfo *pack)
+{
+
+}
+
 // =======add package==============interface=======
 /// add a package;
 int SLicData::addPackage(SPackInfo *info) // base add
@@ -104,7 +177,7 @@ int SLicData::addPackage(SPackInfo *info) // base add
    return i;
 
 }
-//-------remove packInfo * from packMng:--internal use 
+//-------remove packInfo * from packMng:--internal use
 /// return i  index of info in mng <0 err
 int SLicData::removePackage(QString packid, SPackInfo *info) // base remove
 {
@@ -208,7 +281,7 @@ bool SLicData::isPackidInApp(QString packid)
    if (mapApp.contains(packid)) return true;
    else return false;
 }
- 
+
 /// found msg = name  in PackInfo in the PackMng that have the same packid
 QMap<QString, SPackInfo *> SLicData::findPackageInfo(QString msg, QString value)
 {
@@ -258,7 +331,7 @@ bool SLicData::isUuid(QString packid, QString uuid)
    msg = UUID;
    return  !isPackageMsgFind(packid, msg, uuid); // if found return false ,not
 }
-/// if venderSign is the same with the exists in the packageMng 
+/// if venderSign is the same with the exists in the packageMng
 bool SLicData::isVenderSign(QString vendername, QString venderSign)
 {
    SPackMng *mng;
@@ -310,7 +383,7 @@ QString SLicData::encodeAppId(QString ip, QString pid)
 int SLicData::registerApp(SAppInfo& info)
 {
    int i;
-   QString packid,err;
+   QString packid, err;
    SPackMng *mng;
    SAppMng *appmng;
    packid = info.packid;
@@ -319,7 +392,7 @@ int SLicData::registerApp(SAppInfo& info)
    i = -1;
    if (isPackidInPack(packid))
    {
-      if (isPackidInApp(packid))// is packid in appMng
+      if (isPackidInApp(packid)) // is packid in appMng
       {
          appmng = mapApp[packid];
       }
@@ -330,14 +403,14 @@ int SLicData::registerApp(SAppInfo& info)
       //
       mng = mapPack[packid];
       //qDebug() << "appReuest0" << appmng;
-      
-      i = mng->appRequest(info, appmng); 
+
+      i = mng->appRequest(info, appmng);
       //qDebug() << " i = mng->appRequest(info,appmng)" << i;
    }
-   else// no this package
+   else // no this package
    {
-       err = "registerApp Error:no this package name = "+packid;
-       info.err = err;
+      err = "registerApp Error:no this package name = " + packid;
+      info.err = err;
 
    }
    //qDebug() << "222";
@@ -358,21 +431,21 @@ int SLicData::releaseApp(SAppInfo& info)
    i = -1;
 #if 0   // we donot care if apckid exist or removed:
    if (!isPackidInPack(packid))
-   {  
-       err = "releaseApp Error: no this package in packMng name = "+packid;
-       info->err = err;
+   {
+      err = "releaseApp Error: no this package in packMng name = "+packid;
+      info->err = err;
    }
 #endif
-      if (isPackidInApp(packid)) // is a registerd packid
-      {
-         appmng = mapApp[packid]; // appmng
-         mng = mapPack[packid];   // packmng;
-         i = mng->appRelease(info, appmng);
-      }
-      else
-      {
-          info.err  = "releaseApp Error: no this package in appMap name = "+ packid;         
-      }
+   if (isPackidInApp(packid)) // is a registerd packid
+   {
+      appmng = mapApp[packid]; // appmng
+      mng = mapPack[packid];   // packmng;
+      i = mng->appRelease(info, appmng);
+   }
+   else
+   {
+      info.err  = "releaseApp Error: no this package in appMap name = " + packid;
+   }
    return i;
 }
 //===========================add app===========================
@@ -453,20 +526,20 @@ int SLicData::addApp(SAppInfo& ainfo)
       info->ret = i;
       elog(info);
       delete info;
-      info = NULL;    
+      info = NULL;
    }
-   
+
    //qDebug()<< "info   ==" << info->appid << info->err;
 //qDebug() << "return1 = " << i;
-   if (info !=NULL)  
+   if (info != NULL)
    {
-       info->ret = i;
-       info->end = fd.sEP();
-      
-       elog(info); 
+      info->ret = i;
+      info->end = fd.sEP();
+
+      elog(info);
    }
    //qDebug() << "return2 = " << i;
-   return i;// >=0 OK <0 err;
+   return i; // >=0 OK <0 err;
 }
 /// get packid from input AppInfo, get and remove  *info from appMng ,and call releaseAPP;
 int SLicData::rmApp(SAppInfo& ainfo)
@@ -505,19 +578,19 @@ int SLicData::rmApp(SAppInfo& ainfo)
 
 
    rmInfo = (SAppInfo *)((LInfoMng *)(mapApp[info->packid]))->get(info->appid);
-   if (rmInfo != NULL)// found it:
+   if (rmInfo != NULL) // found it:
    {
-      i = ((LInfoMng *)(mapApp[info->packid]))->rmInfo(rmInfo);  
-      if (i < 0) 
+      i = ((LInfoMng *)(mapApp[info->packid]))->rmInfo(rmInfo);
+      if (i < 0)
       {
-          err = QString("Error: cannot remove Info form appMng; ") + " appid= " + info->appid + " packid = " + info->packid;
+         err = QString("Error: cannot remove Info form appMng; ") + " appid= " + info->appid + " packid = " + info->packid;
       }
       else
       {
-          i = releaseApp(*rmInfo);
-          err = "Error: releaseApp(*rmInfo)" + rmInfo->err + " appid= " + info->appid + " packid = " + info->packid;
+         i = releaseApp(*rmInfo);
+         err = "Error: releaseApp(*rmInfo)" + rmInfo->err + " appid= " + info->appid + " packid = " + info->packid;
       }
-      
+
    }
    else
    {
@@ -537,9 +610,9 @@ int SLicData::rmApp(SAppInfo& ainfo)
    else
    {
       alog(rmInfo);
-      delete rmInfo;// remove the appInfo if ok;
+      delete rmInfo; // remove the appInfo if ok;
    }
-   return i;// >=0 OK <0 err;
+   return i; // >=0 OK <0 err;
 }
 // ============log==========================================================
 /// plog info
@@ -554,7 +627,7 @@ void SLicData::plog(SPackInfo *info, QString fun)
    }
    else
    {
-      str =  fun + " OK:" + info->packid + " " + info->get(PTYPE).toString() +" "+ info->get(PLIMIT).toString() +" "+info->get(PSTARTDATE).toString() +" "+info->get(PENDDATE).toString() +" "+info->get(UUID).toString();
+      str =  fun + " OK:" + info->packid + " " + info->get(PTYPE).toString() + " " + info->get(PLIMIT).toString() + " " + info->get(PSTARTDATE).toString() + " " + info->get(PENDDATE).toString() + " " + info->get(UUID).toString();
       _plog.ts(str);
    }
 }
@@ -591,4 +664,346 @@ void SLicData::alog(SAppInfo *info)
    _alog << str;
    _alog << info->packid << info->appid << info->user << info->start << info->end << info->end - info->start << info->number << info->rtype << endl;
    _lockLog.unlock();
+}
+//====================================saveDB==============loadDB============
+int SLicData::saveDB()
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   QFile file(fileDB);
+   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
+
+   QDataStream ds(&file);
+// pack:
+   SPackMng *pmng;
+   slist = mapPack.keys();
+   ds << slist;
+
+   sz = mapPack.size();
+   for (i = 0; i < sz; i++)
+   {
+      pmng = mapPack[slist[i]];
+      pmng->encode(ds);
+   }
+
+// app:
+   SAppMng *amng;
+   slist = mapApp.keys();
+   ds << slist;
+
+   sz = mapApp.size();
+   for (i = 0; i < sz; i++)
+   {
+      amng = mapApp[slist[i]];
+      amng->encode(ds);
+   }
+// close
+   file.flush();
+   file.close();
+
+   return saveDBMsg();
+}
+
+int SLicData::saveDBMsg()
+{
+   int sz;
+   QString fileDB, filePtr;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   filePtr = getDBFileIndex();
+
+   QFile ptr(filePtr);
+
+   QString fpath, fcdate, fmds5, finode, fsz;
+   QFileInfo fi(fileDB);
+
+   fpath = fi.absoluteFilePath();
+   fcdate = _dt.TID(fileDB);
+   fmds5 = _dt.mds5(fileDB);
+   finode = _dt.inodeFull(fileDB);
+   fsz = _dt.size(fileDB);
+#if 1
+   qDebug() << fpath;
+   qDebug() << fcdate;
+   qDebug() << fmds5;
+   qDebug() << finode;
+   qDebug() << fsz;
+#endif
+   //open:
+   if (!ptr.open(QIODevice::WriteOnly |QIODevice::Truncate)) return -2;
+   QDataStream ds(&ptr);
+   ds << fpath;
+   ds << fcdate;
+   ds << fmds5;
+   ds << finode;
+   ds << fsz;
+   ptr.flush();
+   // my inode:
+   QFileInfo fii(filePtr);
+   fpath = fii.absoluteFilePath();
+   finode = _dt.inodeFull(filePtr);
+
+   ds << fpath;
+   ds << finode;
+   fcdate = _dt.TID(filePtr);
+   ds << fcdate;
+   ptr.flush();
+   sz = ptr.size();
+   ds << sz + 4;  
+   ptr.close();
+// ptr Mds5 save:
+   fmds5 = _dt.mds5(filePtr);
+   QSettings st(ORG_NAME,SAPP_NAME);
+   st.setValue(DB_PTR,fmds5);
+   
+   return sz +4;
+}
+#define RET(x) {cout << x <<endl; return -1;}
+int SLicData::loadDBMsg()
+{
+   int sz;
+   QString fileDB, filePtr;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   filePtr = getDBFileIndex();
+
+   QFile ptr(filePtr);
+
+   QString fpath, fcdate, fmds5, finode, fsz;
+   QFileInfo fi(fileDB);
+   // ptr Mds5 load:
+   fmds5 = _dt.mds5(filePtr);
+   QSettings st(ORG_NAME,SAPP_NAME);
+   fsz = st.value(DB_PTR,fmds5).toString();
+   if(fsz != fmds5) RET("DB_PTR fileContains error");
+
+   fpath = fi.absoluteFilePath();
+   fcdate = _dt.TID(fileDB);
+   fmds5 = _dt.mds5(fileDB);
+   finode = _dt.inodeFull(fileDB);
+   fsz = _dt.size(fileDB);
+#if 1
+   qDebug() << fpath;
+   qDebug() << fcdate;
+   qDebug() << fmds5;
+   qDebug() << finode;
+   qDebug() << fsz;
+#endif
+   //open:
+   int ilen;
+   QString str;
+   if (!ptr.open(QIODevice::ReadOnly)) return -2;
+   QDataStream ds(&ptr);
+   ds >> str;
+   if(str != fpath) RET("DB filePath error");
+   ds >> str;
+   
+   ilen = abs(str.toLong() - fcdate.toLong());
+   qDebug() << " DB Date = " << str << fcdate << ilen;
+
+   //if(str != fcdate) RET("DB fileDate error");
+   if(ilen > 1) RET("DB fileDate error");
+   ds >> str;
+   if(str != fmds5) RET("DB fileContains error");
+   ds >> str;
+   if(str != finode) RET("DB fileInode error");
+   ds >> str;
+   if(str != fsz) RET("DB fileSize error");
+ 
+   QFileInfo fii(filePtr);
+   int i;
+   fpath = fii.absoluteFilePath();
+   finode = _dt.inodeFull(filePtr);
+   fcdate = _dt.TID(filePtr);
+   sz = ptr.size();
+
+   ds >> str;
+   if(str != fpath) RET("DB_Ptr filePath error");
+   ds >> str;
+   if(str != finode) RET("DB_Ptr fileInode error");
+   ds >> str;
+   ilen = abs(str.toLong() - fcdate.toLong());
+   qDebug() << " ptr Date = " << str << fcdate << ilen;
+
+   if(ilen > 1) RET("DB_ptr fileDate error");
+   //if(str != fcdate) RET("DB_Ptr fileDate error");
+   
+   ds >> i;
+   if(i != sz) RET("DB_Ptr fileSize error");
+
+   ptr.close();
+   return sz;
+}
+
+QString SLicData::getDBFile()
+{
+   return DB_FILE;
+}
+QString SLicData::getDBFileIndex()
+{
+   return DB_FILE_PTR;
+}
+int SLicData::loadDB()
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+   if (!isDBRegisted()) 
+   {
+       i = registerDB();
+       return i;
+   }
+   i = loadDBMsg(); 
+   if (i <=0)  return -1;
+
+   fileDB = getDBFile();
+   QFile file(fileDB);
+   if (!file.open(QIODevice::ReadOnly)) return -1;
+   QDataStream ds(&file);
+// pack:
+   SPackMng *pmng;
+
+   ds >> slist;
+   sz = slist.size();
+   //qDebug() << "slist in load = " << slist;
+   for (i = 0; i < sz; i++)
+   {
+      pmng = new SPackMng();
+      pmng->decode(ds);
+      //qDebug() << "inloop = " << i <<   pmng->size() << pmng->getText();
+      mapPack[slist[i]] = pmng;
+   }
+
+// app:
+   SAppMng *amng;
+   ds >> slist;
+
+   sz = slist.size();
+   for (i = 0; i < sz; i++)
+   {
+      amng = new SAppMng();
+      amng->decode(ds);
+      mapApp[slist[i]] = amng;
+   }
+// close
+   file.close();
+   return 1;
+
+}
+int SLicData::clear()
+{
+   int sz, i;
+   QStringList slist;
+
+// pack:
+   SPackMng *pmng;
+   slist = mapPack.keys();
+
+   sz = mapPack.size();
+   for (i = 0; i < sz; i++)
+   {
+      pmng = mapPack[slist[i]];
+      pmng->clear();
+      delete pmng;
+   }
+   mapPack.clear();
+
+// app:
+   SAppMng *amng;
+   slist = mapApp.keys();
+
+   sz = mapApp.size();
+   for (i = 0; i < sz; i++)
+   {
+      amng = mapApp[slist[i]];
+      amng->setRemoveOption(true);
+      amng->clear();
+      delete amng;
+   }
+   mapApp.clear();
+
+   return 1;
+
+}
+int SLicData::registerDB()
+{
+    QSettings st(ORG_NAME,SAPP_NAME);
+    st.setValue(DB_REGISTER,"dbname");
+
+}
+bool SLicData::isDBRegisted()
+{
+    QSettings st(ORG_NAME,SAPP_NAME);
+    QString  str;
+    str = st.value(DB_REGISTER).toString();
+    if (str == "dbname") return true;
+        else
+        return false;
+}
+//=======================heartBeat:
+int SLicData::appHB(SAppInfo &app)
+{
+    int i, number;
+    LFileDate fd;
+    QString str;
+    QString vender, package, version, packid, pid, ip, user;
+ // check App info
+    SAppInfo *info;
+    SAppMng *mng;
+    mng = NULL;
+
+    info = &app;
+    
+    vender = info->get(APP_VENDER).toString();
+    package = info->get(APP_PACKAGE).toString();
+    version = info->get(APP_VERSION).toString();
+    number = info->get(APP_NUMBER).toInt();
+    ip = info->get(APP_IP).toString();
+    pid = info->get(APP_PID).toString();
+    user = info->get(APP_USER).toString();
+
+    packid = encodePackageId(vender, package, version);
+    mng = appMng(packid);
+    QString appid;
+
+    appid = encodeAppId(ip,pid);
+
+    info = NULL;
+    info = (SAppInfo* )mng->get(appid);
+
+    if (info != NULL)  
+        return info->appHB(); 
+    else
+        return -1;
+ 
+}
+int SLicData::ckeckHB()
+{
+    return 1;
+}
+//=============================util====================
+QString SLicData::hex(QString s)
+{
+    string ss1,ss2;
+    QString str;
+    LEncrypt en;
+    ss1 =  s.Q2CH;
+    ss2 = en.bin2Hex(ss1); 
+    str = ss2.c_str();
+    return str;   
+}
+QString SLicData::unHex(QString s)
+{
+    string ss1,ss2;
+    QString str;
+    LEncrypt en;
+    ss1 =  s.Q2CH;
+    ss2 = en.hex2Bin(ss1); 
+    str = ss2.c_str();
+    return str;   
 }

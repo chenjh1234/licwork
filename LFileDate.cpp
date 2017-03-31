@@ -17,19 +17,59 @@ QString LFileDate::inode()
     return inode(_fileN);
 }
 /// inode of file
-QString LFileDate::inode(QString file)
+unsigned long  LFileDate::inodeLong(QString file)
 {
    QString str ;
    struct stat buf;
    char *filen;
-   int ia;
+   unsigned long il; 
    filen = (char *)file.Q2CH;
-
    stat(filen, &buf);
-   ia = (unsigned int)buf.st_ino;
-   str.sprintf("%08X",ia);
-   //printf("inode = %08X\n", ia);
+   il = (unsigned long)buf.st_ino;
+   return il;
+}
+QString LFileDate::inode(QString file)
+{
+   QString str ;
+   unsigned long il; 
+   il = inodeLong(file);
+   str.sprintf("%08X",il);
    return str;
+}
+QString LFileDate::inodeFull(QString file)
+{
+   QString str ;
+   unsigned long il; 
+   int *pa1,*pa2;
+  
+   il = inodeLong(file);
+   pa1 = (int *)&il;
+   pa2 = (int *) (&il) + 1;
+   //str.sprintf("%08X",il);// half;
+   str.sprintf("%08X%08X",*pa2,*pa1);//long; 
+ 
+   return str;
+}
+QString LFileDate::inodeDec(QString file)
+{
+   QString str ;
+   unsigned long il; 
+   int *pa1,*pa2;
+   il = inodeLong(file);
+   pa1 = (int *)&il;
+   pa2 = (int *) (&il) + 1;
+   str.sprintf("%ld",il);// dec;
+   //str.sprintf("%08X08X",*pa2,*pa1);//long; 
+   return str;
+}
+QString LFileDate::path(QString file)
+{
+    QString str;
+    QFileInfo *fi;
+    fi = new QFileInfo(file);
+    str = fi->absoluteFilePath();
+    delete fi;
+    return str;
 }
 /// modify of file
 QString LFileDate::TID(QString file)
@@ -43,13 +83,15 @@ QString LFileDate::TID(QString file)
 
    stat(filen, &buf);
  //  int tc[2];
-   long long lt  = buf.st_mtime;
+   long lt  = buf.st_mtime;
    //memcpy(tc, &lt, 8);
    //return tc[0] + tc[1];
    //str.sprintf("%08X%08X",tc[0],tc[1]);
    //qDebug() << " modify = " <<lt;
    //printf("inode =%08X%08X",tc[0],tc[1]);
+   //printf("tid = %ld",lt);
    dt.setMSecsSinceEpoch((qint64)lt*1000) ;
+   //qDebug() << "dt in TID =" << dt;
    str = DT(dt);
 
    return str;
@@ -67,6 +109,8 @@ QString LFileDate::modify(QFileInfo *fi)
     QDateTime  dt;
     QString str;
     dt = fi->lastModified();
+    //qDebug() << "dt = " << dt;
+    //qDebug() << "dt.ttc = " << dt.toUTC();
     str = DT(dt);
     return str;
 }
@@ -128,6 +172,45 @@ QString LFileDate::getText(QString s)
    }
    return rstr; 
 }
+#ifdef MDS5_DEF
+QString LFileDate::mds5(QString filen)
+{
+   LEncrypt en;
+   int i;
+   char ch[35];
+   QFile f;
+   QString str ,rstr;
+   QByteArray ba;
+   long sz;
+    
+   rstr = "";
+   f.setFileName(filen);
+
+   if (f.open(QIODevice::ReadOnly)) 
+   {
+       ba = f.readAll();
+       if (ba.size() >0) 
+       {
+           i = en.digest(ba.data(),ba.size(),ch);
+           rstr = ch;
+       }
+       f.close();
+   }
+   return rstr; 
+}
+QStringList LFileDate::cmd(QString cm)
+{
+    LEncrypt en;
+    QString str;
+    QStringList slist;
+    string c,r;
+    c = cm.Q2CH;
+    r = en.cmd(c);
+    str = r.c_str();
+    slist = str.split("\n");
+    return slist;
+}
+#endif
 //===========================================================
 /// date of yyyymmdd
 QString LFileDate::getDateStr(int y,int m,int d)

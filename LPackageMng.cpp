@@ -45,3 +45,4 @@ QString  LPackageMng::getText()
     ch = chP;
     return LInfoMng::getText(ch);   
 }
+ 

@@ -360,6 +360,19 @@ U_START(fileapi)
     qDebug() << " current msEP = " << f.msEP();
     EQ(f.TID(str),f.modify(str));
     EQ(dt.currentDateTime().toMSecsSinceEpoch() ,f.msEP());
+    PR("mds5-------------------------------------------------");
+    qDebug() << "mds5 = " << f.mds5("licfile.lic");
+    qDebug() << "pwd = "  << f.cmd("pwd");
+    qDebug() << "ls = "  << f.cmd("ls -ltr");
+    GT(f.mds5("licfile.lic").size(),0)
+    GT(f.cmd("pwd").size(),0)
+    GT(f.cmd("ls -ltr").size(),0)
+    qDebug() << "inodeFull= "  << f.inodeFull("fileDB.db");
+    qDebug() << "inodeHalf= "  << f.inode("fileDB.db");
+    qDebug() << "inodeDec= "  << f.inodeDec("fileDB.db");
+    qDebug() << "mds5= "  << f.mds5("fileDB.db");
+
+
 U_END
 U_START(SLicMngLoadFile)
 
@@ -500,7 +513,7 @@ U_END
 
 U_START(licAppAdd)
     SLicMng sm;
-    SAppInfo info,*pf;
+    SAppInfo info;
     int i;
     QString file,str,key;
     QString ip,pid,user,appid;
@@ -581,7 +594,7 @@ U_START(licAppAdd)
 U_END
 U_START(licAppRemove)
     SLicMng sm;
-    SAppInfo info,*pf;
+    SAppInfo info;
     int i ;
     QString file,str,key;
     QString ip,pid,user,appid;
@@ -679,14 +692,27 @@ U_START(licAppRemove)
     }
     #endif
 U_END
+U_START(CkeckAppAdd)
+    SLicMng sm;
+    QString key;
+    key = "geoeast_pc1_1.0";
+    qDebug() << "node.used ="  <<sm.data->packMng(key)->nodeUsed();
+    qDebug() << "user.used ="  <<sm.data->packMng(key)->userUsed();
+    qDebug() << "task.used ="  <<sm.data->packMng(key)->taskUsed();
+    qDebug() << "appPacks = " << sm.data->appPacks();
+    qDebug() << "appSize = " << sm.data->appSize();
+    EQ(sm.data->packMng(key)->nodeUsed(), 5); 
+    EQ(sm.data->packMng(key)->userUsed(), 5);  
+    EQ(sm.data->packMng(key)->taskUsed(), 10)
+ 
+U_END
 U_START(dataLOG)
     SLicMng sm;
-     
-
 U_END
+
 U_START(licAppUserAddRemove)
     SLicMng sm;
-    SAppInfo info,*pf;
+    SAppInfo info;
     int i;
     QString file,str,key;
     QString ip,pid,user,appid;
@@ -774,8 +800,161 @@ U_START(licAppUserAddRemove)
         GT(ir,0);
     }
 U_END
+U_START(LoadFiles)
+    SLicMng sm;
+    int i;
+    QString file,file1,file2,file3,str;
+    file = "./test/test_lic_task2.lic";
+    file1 = "./test/test_lic_node.lic";
+    file2 = "./test/test_lic_user.lic";
+ // load file:
+
+    i = sm.loadFile(file,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i ,0);
+    i = sm.loadFile(file1,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i ,0);
+    i = sm.loadFile(file2,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i ,0);
+U_END
+
+U_START(checkLoadFiles)
+    SLicMng sm;
+    
+    EQ(sm.data->packSize(),4)
+    QString key;
+    qDebug()  << "packges = " << sm.data->packNames();
+    key = "geoeast_pc1_1.0";
+    qDebug()  << "key = " <<key;
+    
+    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1)
+    EQ(sm.data->packMng(key)->userSize(),1)
+    EQ(sm.data->packMng(key)->nodeSize(),1)
+
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    //EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),5)
+    //EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),5)
+    //EQ(sm.data->packMng(key)->userUsed(),0)
+
+        key = "geoeast_pc2_1.0";
+    qDebug()  << "key = " <<key;
+    
+    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1)
+    EQ(sm.data->packMng(key)->userSize(),0)
+    EQ(sm.data->packMng(key)->nodeSize(),0)
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),0)
+    EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),0)
+    EQ(sm.data->packMng(key)->userUsed(),0)
+
+U_END
+U_START(saveDB)
+
+    SLicMng sm;
+    int i;
+    
+    i = sm.data->saveDB();
+    GT(i,0);
+
+    sm.data->clear();
+    EQ(sm.data->packSize(),0)
+    EQ(sm.data->appPacks().size(),0)
+    EQ(sm.data->appSize(),0)
+
+
+U_END
+U_START(loadDB)
+    int i;
+
+    SLicMng sm;
+    i = sm.data->loadDB();
+    GT(i,0);
+
+U_END
+U_START(dataClear)
+    SLicMng sm;
+    sm.data->clear();
+U_END
+U_START(borrowLic)
+    SLicMng sm;
+    LFileDate fd;
+    LLicFile lic;
+    LInfo * infoV,*infoP;
+    int i;
+    QString file,file1,file2,str,str1;
+    file = "./test/test_borrowIn.lic";
+    file1 = "./test/test_borrowOut.lic";
+    file2 = "./test/test_borrowOut1.lic";
+     
+ // load file:
+    QString key;
+    key = "geoeast_pc1_1.0";
+
+    i = sm.borrow(file,SERVER_PUB,SERVER_PUB,file1);
+    GT(i,0);
+    str= fd.getText(SERVER_PUB);
+    lic.readFile(file1);
+    infoV = lic.vender();
+    infoP = lic.package(0);
+    str1 = infoP->get(PBORROW).toString();
+    str1 = sm.data->unHex(str1);
+
+    EQ(str,str1);
+    qDebug() << "len" << str.length() << str1.length();
+    qDebug() << "||" << str<< "||";
+    qDebug() << "||" << str1<< "||";
+
+ 
+    qDebug()  << "key = " <<key;
+    PR("=======after borrow out====================================================");
+    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1+1)
+    EQ(sm.data->packMng(key)->userSize(),1)
+    EQ(sm.data->packMng(key)->nodeSize(),1)
+
+    EQ(sm.data->packMng(key)->taskLimit(),10-2)
+    //EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),5)
+    //EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),5)
+    //EQ(sm.data->packMng(key)->userUsed(),0)
+    i=sm.loadFile(file1,SERVER_PRI);
+    LT(i,0);
+    i=sm.loadFile(file2,SERVER_PRI);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i,0);
+    #if 1
+    PR("=======after borrow out and load borrow In====================================================");
+    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),1+1+1)
+    EQ(sm.data->packMng(key)->userSize(),1)
+    EQ(sm.data->packMng(key)->nodeSize(),1)
+
+    EQ(sm.data->packMng(key)->taskLimit(),10-2+2)
+    //EQ(sm.data->packMng(key)->taskUsed(),0)
+    EQ(sm.data->packMng(key)->nodeLimit(),5)
+    //EQ(sm.data->packMng(key)->nodeUsed(),0)
+    EQ(sm.data->packMng(key)->userLimit(),5)
+    #endif
+    QStringList slist;
+    slist = sm.reportPackage();
+    for (i = 0; i < slist.size(); i++) 
+    {
+        qDebug() << i << slist[i];
+    }
+U_END
 M_START
-#if 0
+#if 0// whole test of 
+#if 1
+// base test of licfiles,load file log;
     testCrypt();// in .cpp
     U_TEST(Qlist_remove_ptr)
     U_TEST(basInfo)
@@ -789,23 +968,46 @@ M_START
     U_TEST(SLicMngLoadFile)
     U_TEST(SLicMngApp)
     U_TEST(testLOG)
-    U_TEST(licLoadFiles)
+    //U_TEST(licLoadFiles)
+// end of base test:
+#endif
+#if 1
+// test loadfiles app login,app logout;
+    U_TEST(dataClear)
+    U_TEST(LoadFiles)
+    U_TEST(checkLoadFiles)
     U_TEST(licAppAdd)
     //U_TEST(dataLOG)
     U_TEST(licAppRemove)
     U_TEST(licAppUserAddRemove)
-#else 
-   
-     U_TEST(licLoadFiles)
+// end of test loadfiles app login,app logout;
+#endif 
+#if 1
+// test save and load DB:--------------
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(checkLoadFiles)
      U_TEST(licAppAdd)
+     U_TEST(CkeckAppAdd)
+ 
+     U_TEST(saveDB)
+     U_TEST(loadDB)
+     U_TEST(checkLoadFiles)
+     U_TEST(CkeckAppAdd)
      U_TEST(licAppRemove)
      U_TEST(licAppUserAddRemove)
-      U_TEST(testLOG)
-   
-    
-    
-#endif 
- 
+// end of test sace load DB---------------
+#endif
+
+
+
+#endif// end of whole  test 
+#if 1
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(checkLoadFiles)
+     U_TEST(borrowLic)
+#endif
      
       
 M_END

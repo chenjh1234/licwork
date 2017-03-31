@@ -16,6 +16,9 @@ public:
     SAppMng();
     ~SAppMng();
     //QString packid;
+
+    int encode(QDataStream &ds);
+    int decode(QDataStream &ds);
   
 private:
     void init();

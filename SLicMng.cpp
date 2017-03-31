@@ -27,7 +27,7 @@ void SLicMng::init()
 
 }
 
-//
+//------------------app-----------------------------
 int SLicMng::loginApp(SAppInfo& msg)
 {
    return data->addApp(msg);
@@ -38,10 +38,10 @@ int SLicMng::logoutApp(SAppInfo& msg)
    return data->rmApp(msg);
 }
 
-//
-int SLicMng::heartBeat(QString vender, QString package, QString version, QString host, QString pid)
+//------heartBeat----------------------------------
+int SLicMng::heartBeat(SAppInfo &msg)
 {
-   return 0;
+   return data->appHB(msg);
 }
 
 #if 0
@@ -54,6 +54,7 @@ int SLicMng::unloadPackage(QString vender, QString package, QString version, QSt
    //return data->removePackage( packid);
 }
 #endif
+//-------------chack file:-----------------------------
 int SLicMng::checkLicFile(QString filename, QString serverPri)
 {
 
@@ -92,6 +93,8 @@ int SLicMng::checkLicFile(QString filename, QString serverPri)
    // packagekey verify:
 
    int num;
+   LFileDate fd;
+   str = fd.curDT();
    num  = licFile.size();
    //qDebug() << "packages = " << num;
    for (i = 0; i < num; i++)
@@ -99,13 +102,13 @@ int SLicMng::checkLicFile(QString filename, QString serverPri)
       infoP = licFile.package(i);
       b = lic.isPackageKeyValid(venderKey, infoP);
       if (!b) return  LOADFILE_PACKAGEKEY_ERR;
+       // checkDate:
+      if (str < infoP->get(PSTARTDATE).toString() || str > infoP->get(PENDDATE).toString())  return  LOADFILE_DATE_ERR;
    }
-   // checkDate:
-
-   //??????????????
+  
    return num;
 }
-//
+//load file------------------------
 int SLicMng::loadFile(QString filename, QString serverPri)
 {
    int i, ret, num;
@@ -113,7 +116,7 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    LLicEncrypt lic;
    LInfo *infoP,*infoV;
    LEncrypt en;
-   QString str, venderKey, pKey, venderSign, uuid, smid, venderName;
+   QString str, venderKey, pKey, venderSign, uuid, smid, venderName, borrow;
    bool b;
    num = checkLicFile(filename, serverPri);
    if (num <= 0)  return num;
@@ -123,14 +126,18 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    if (i <= 0) return LOADFILE_FILE_ERR; 
    infoV = licFile.vender();
    uuid = infoV->get(UUID).toString();
+   borrow = infoV->get(BORROW).toString();
    venderName = infoV->get(VENDERNAME).toString();
    lic.isVenderKeyValid(serverPri, infoV);// we do not if
    venderSign = lic.getVenderSign(); //  isVenderKeyValid make it available
+   
 
 // insert to Data:
    SPackInfo *infoSP;
    //SPackInfo *mngSP;
-   QString packid, pname, version, borrow;
+   QString packid, pname, version;
+   int len;
+   len =20;
    int j;
    for (i = 0; i < num; i++)
    {
@@ -139,13 +146,18 @@ int SLicMng::loadFile(QString filename, QString serverPri)
       *((LInfo *)infoSP) = *infoP;
       // set infoSP:
       //remove:
-      infoSP->remove(SERVERID);
-      infoSP->remove(SERVERNAME);
+      //infoSP->remove(SERVERID);
+      //infoSP->remove(SERVERNAME);
       //get:
       pname = infoSP->get(PACKAGENAME).toString();
       version = infoSP->get(PVERSION).toString();
-      borrow = infoSP->get(BORROW).toString();
-
+      str = infoSP->get(PBORROW).toString();
+       
+          if (str.length() >len) // decode hex
+          {
+              str = data->unHex(str);
+              infoSP->set(PBORROW,str);
+          }
       //set:
       infoSP->set(VENDERKEY, venderKey);
       infoSP->set(VENDERSIGN, venderSign);
@@ -156,7 +168,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
 
       packid = data->encodePackageId(venderName, pname, version);
       infoSP->packid = packid;
-      infoSP->limit =  infoSP->get(PLIMIT).toInt();
+      infoSP->setStat();
+      //infoSP->limit =  infoSP->get(PLIMIT).toInt();
       // is UUID exist:
       if (i == 0)
       {
@@ -174,6 +187,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    ret = num;
    return ret;
 }
+// unload file
+/// unload license  file:
 int SLicMng::unloadFile(QString filename, QString serverPri)
 {
    int i, ret, num;
@@ -195,10 +210,251 @@ int SLicMng::unloadFile(QString filename, QString serverPri)
    return ret;
 }
 
-//
-int SLicMng::borrow(QString vender, QString package, QString version, int number, QString mid)
+//-------borrow-----------------------
+int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
 {
-   return 0;
+ 
+   int i;
+   LLicEncrypt lic;
+   LLicFile *lfile;
+   QString str, fileo;
+   LInfo * infoV,*infoP;
+   SPackInfo *infoSP;
+   LEncrypt en;
+   LFileDate fd;
+
+// open file:
+   QString  venderKey, pKey,sPub,vSign,uuid;
+   fileo = fo;
+   lfile = new LLicFile();
+   i = lfile->readFile((char *)filename.Q2CH);
+   //qDebug() << "lfile.->readFile return = " << i;
+   if (i <= 0)
+   {
+      cout << INPUT_ERR;
+      return -1;
+   }
+ 
+// serverPub files:
+   infoV = lfile->vender();
+   sPub = sPubIn;
+// is serverPub,venserPri file exist:
+   //pubIn
+   if (!fd.isFile(sPub))
+   {
+      cout << SERVERPUB_ERR << "file = " << sPub.Q2CH << endl;
+      return -1;
+   }
+   //pubOut
+   sPub = sPubOut;
+   if (!fd.isFile(sPub))
+   {
+      cout << SERVERPUB_ERR << "file = " << sPub.Q2CH << endl;
+      return -1;
+   }
+ 
+    
+// vendername:
+   QString vName;
+   QString pname,pver,packid,ptype,bmid,borrow;
+
+   vName = infoV->get(VENDERNAME).toString();  
+   uuid = infoV->get(UUID).toString();// form inputfile
+   bmid = infoV->get(SERVERID).toString();// form inputfile
+   
+
+   infoP = lfile->package(0);
+
+// register borrowOut------------------------------------
+       infoSP = new SPackInfo();
+      *((LInfo *)infoSP) = *infoP;// copy
+      // set infoSP:
+ 
+      pname = infoSP->get(PACKAGENAME).toString();
+      pver = infoSP->get(PVERSION).toString();
+       
+      //infoSP->set(VENDERKEY, venderKey);
+      //infoSP->set(VENDERSIGN, venderSign);
+      infoSP->set(BORROW,BORROW_NO);
+      infoSP->set(UUID, uuid);
+      infoSP->set(BMID, bmid);
+
+      packid = data->encodePackageId(vName, pname, pver);
+
+      infoSP->packid = packid;
+      infoSP->limit =  infoSP->get(PLIMIT).toInt();
+      if (infoSP->limit <=0 ) 
+      {
+          cout << "borrow Error : limit <= 0"  ;
+          return -1;
+      }
+// register a -limit package:-----------------------------------------
+     // qDebug() << "infoSpID = " << infoSP->packid<<infoSP->limit;
+      //qDebug() << "infoSp = " << infoSP->getText();
+      i = data->borrow(infoSP);
+      //qDebug() << "infoSp after =  "<< infoSP->getText();
+      if(i <0 ) 
+      {
+          cout << "borrow Error : " << infoSP->err.Q2CH;
+          return i;
+      }
+// ready for borrow license file:
+ 
+#if 1
+     
+//get venderKey
+ 
+#if 0 //  test a diffrence new uuid
+   string sstr;
+   sstr = en.uuid();
+   uuid = sstr.c_str();
+   infoV->set(UUID,uuid);
+#endif
+
+   infoV->set(BORROW,"no"); // ban of borrow 
+   str = lic.encryptVenderKey(sPubIn, infoV, vSign);
+   infoV->set(VENDERKEY, str);
+
+   //qDebug() << "venderKey = " << VENDERKEY<<str;
+   if (str.length() <= 0)
+   {
+      cout << VENDERKEY_ERR;
+      return -1;
+   }
+   venderKey = str;
+// get package keys:
+   // pborrow:
+   borrow = fd.getText(sPubOut);
+   //qDebug() << "borrow = " << borrow;
+    // tohex:
+   borrow = data->hex(borrow);
+
+   infoP->set(PBORROW,borrow);
+   //packid = data->encodePackageId(vName,pname,pver);
+   //key:
+   str = lic.digestPackageKey(venderKey, infoP);
+   infoP->set(PKEY, str);  
+// output files:
+  
+   i = lfile->writeFile((char *)fileo.Q2CH);
+    if (i <= 0)
+   {
+      cout << WRITEFILE_ERR;
+      return -1;
+   }
+   delete lfile;
+   return 1;
+
+   str = "borrow Lic  OK->" + fileo;
+   cout << str.Q2CH << endl;
+   #endif
+  
+}
+// report====================================
+// 
+QStringList SLicMng::reportPackage()
+{
+    // name,size,task(limit,used),node(limit,used),user(limit,used),
+    // name,ty,limit,start,end;
+    int i,sz;
+    QStringList packs,slist,rlist;
+    QString name,ty,size,str,limit,start,end,pack;
+  
+    packs = data->packNames();
+    sz = packs.size();
+    for (i = 0; i <sz; i++) 
+    {
+        pack = packs[i];
+        slist = reportPackage(pack);
+        rlist << slist;     
+    }  
+    return rlist;
+}
+QStringList SLicMng::reportPackage(QString pack)
+{
+    // name,size,task(limit,used),node(limit,used),user(limit,used),
+    // name,ty,limit,start,end;
+    int  j, szp;
+    QStringList  slist;
+    SPackMng *mng;
+    SPackInfo *info;
+    QString name,ty,size,str,limit,start,end;
+     
+  
+    mng = data->packMng(pack);
+
+    if (mng == NULL) return slist;
+
+    szp = mng->size(); 
+        // packID sizeInfo limitTask used Nodelimit used UserLimit used
+        str = QString("%1 %2 %3 %4 %5 %6 %7 %8").arg(pack,20).arg(szp,10).arg(mng->taskLimit(),10).arg(mng->taskUsed(),10).arg(mng->nodeLimit(),10).arg(mng->nodeUsed(),10).arg(mng->userLimit(),10).arg(mng->userUsed());
+        slist << str;
+        for (j = 0; j < szp; j++) 
+        {
+            info =(SPackInfo*) mng->get(j);
+            ty = info->get(PTYPE).toString();
+            limit = info->get(PLIMIT).toString();
+            start = info->get(PSTARTDATE).toString();
+            end = info->get(PENDDATE).toString();
+            limit = info->get(PLIMIT).toString();
+            str = QString("%1 %2 %3 %4 %5 ").arg(pack,20).arg(ty,10).arg(limit,10).arg(start,10).arg(end ,10);
+            slist << str;
+        }
+ 
+    return slist;
+}
+
+QStringList SLicMng::reportApp()
+{
+        // name,size,task(limit,used),node(limit,used),user(limit,used),
+    // name,ty,limit,start,end;
+    int i,sz;
+    QStringList packs,slist,rlist;
+    QString name,ty,size,str,limit,start,end,pack;
+  
+    packs = data->packNames();
+    sz = packs.size();
+    for (i = 0; i <sz; i++) 
+    {
+        pack = packs[i];
+        slist = reportApp(pack);
+        rlist << slist;     
+    }  
+    return rlist;
+
+}
+
+QStringList SLicMng::reportApp(QString pack)
+{
+    // packid,appid,user,number type, start
+    int  j, szp,number;
+    QStringList  slist;
+    SAppMng *mng;
+    SAppInfo *info;
+    QString appid,user,ty,str,start;
+    //long start;
+    LFileDate fd;
+     
+  
+    mng = data->appMng(pack);
+
+    if (mng == NULL) return slist;
+
+    szp = mng->size(); 
+      
+        for (j = 0; j < szp; j++) 
+        {
+            info =(SAppInfo*) mng->get(j);
+            appid = info->appid;
+            user = info->user;
+            start = fd.EP2DT(info->start);
+            ty = info->rtype;
+            number = info->number;
+            str = QString("%1 %2 %3 %4 %5 %6").arg(pack,20).arg(appid,10).arg(user,10).arg(number,10).arg(ty,10).arg(start,10);
+            slist << str;
+        }
+ 
+    return slist;
 }
 //======================================
 /// if uuid exist in the DB: true no this uuid

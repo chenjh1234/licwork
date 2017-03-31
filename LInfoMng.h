@@ -4,6 +4,7 @@
 #include <QMap>
 #include <QList>
 #include <QVariant>
+#include <QDataStream>
 //#include "comfun.h"
 #include <iostream>
 using namespace std;
@@ -41,6 +42,9 @@ public:
     //LInfo  operator= (LInfo info);
     void clear();
     QMap<QString ,QVariant> map(){return m_map;};
+
+    void encode(QDataStream &ds);
+    void decode(QDataStream &ds);
  
  
 //protected:
@@ -88,6 +92,9 @@ public:
     LInfo * get(QString name);
     QString getText(char ** cc);
     QString getText();
+
+    int encode(QDataStream &ds);
+    int decode(QDataStream &ds);
 
     int  lenOf(char ** cc);
     bool isKeysExist(char ** ch);

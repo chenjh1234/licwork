@@ -97,9 +97,10 @@ bool LLicFile::isKeysExist()
 int LLicFile::readStream(QTextStream *in)
 {
    QFile f;
-   QString str, str1, s1, s2;
+   LEncrypt en;
+   QString str, str1, s1, s2,s;
    QStringList slist;
-   int i, line;
+   int i, line,len;
    int part;
    LInfo *infoVender;
    LInfo *infoPackage;
@@ -107,11 +108,32 @@ int LLicFile::readStream(QTextStream *in)
    infoPackage  = NULL;
    //QTextStream in;
    line = 0;
+   len = 10; // if pborrow.length >len , we decode Hex;
+   bool bMline;
+   bMline = false;
+   string ss1,ss2;
    do
    {
 //read
       line++;
       str = in->readLine();
+      #if 0
+      if (bMline) // continueline
+      {
+          if (str.right(1) == "\"")  str = str.left(str.length()-1);
+          {
+              s = s+str;
+              bMline = false;
+              s2 = s;
+              goto gogo;
+          }
+          else
+          {
+              s = s + str + "\n"; 
+              continue;
+          }      
+      }
+      #endif
       //qDebug() << "read line = " << str << str.length() ;
 //encode
       i = str.indexOf(REM_CHAR);
@@ -123,9 +145,30 @@ int LLicFile::readStream(QTextStream *in)
          //qDebug() << " no = " << str;
          continue;
       }
+
       //qDebug()<< " left = " << slist[0] << slist[0].length() << slist[1] << slist[1].length() ;
       s1 = slist[0].trimmed().toLower();
       s2 = slist[1].trimmed();
+#if 0
+      if (s1 == PBORROW) 
+      {
+          if (s2.length() >len) // decode hex
+          {
+              ss1 = s2.Q2CH;
+              ss2 = en.hex2Bin(ss1);
+              s2 = ss2.c_str();
+          }
+      }
+#endif
+#if 0
+      if (s2.left(1) == "\"") 
+      {
+           bMline = true;
+           s = s2.mid(1) + "\n";
+           continue;
+      }
+gogo:      
+    #endif
       //qDebug()<< " s1,s2 = " << s1 << s1.length() << s2 << s2.length() ;
       // save
       //vender start:
@@ -192,7 +235,7 @@ int LLicFile::readStream(QTextStream *in)
    if (part == 2)  _package.add(infoPackage);
    else return -2;
 // ret:
-   int len;
+    
    len = _package.size();
    if (!isKeysExist())
    {

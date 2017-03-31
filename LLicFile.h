@@ -12,6 +12,7 @@
 #include "LPackageMng.h"
 #include "LVenderDef.h"
 #include "LPackageDef.h"
+#include "LEncrypt.h"
 
 
 #define ENDL "\n"

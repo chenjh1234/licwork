@@ -25,13 +25,18 @@ public:
     PResource() ;
     int limit;
     int used;
+    QString type;
+//
     int size();
     int add(SPackInfo *inf);
     int remove(SPackInfo * inf);
+    int changed(SPackInfo * inf,int change);
     SPackInfo * find(SPackInfo * inf);
     int appRequest(SAppInfo &info,SAppMng *mng);
     int appRelease(SAppInfo &info,SAppMng *mng);
-    QString type;
+    int encode(QDataStream &ds);
+    int decode(QDataStream &ds);
+    void clear();
 
     SPackInfo * getInfo(int used);// which info we register app;
     QList<SPackInfo* > pList;
@@ -48,6 +53,10 @@ public:
     //
     int addInfo(SPackInfo *inf);
     int removeInfo(SPackInfo *inf);
+    int clear();
+    // 
+    int encode(QDataStream &ds);
+    int decode(QDataStream &ds);
     //-------
     int taskSize();
     int nodeSize();
@@ -60,6 +69,8 @@ public:
     int taskUsed();
     int nodeUsed();
     int userUsed();
+
+    PResource * getPResource(QString ty);
 private:
     PResource rnode,rtask,ruser;
     void init();

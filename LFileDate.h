@@ -12,7 +12,13 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QString>
+#include <QByteArray>
 #include <QDebug>
+
+#define MDS5_DEF
+#ifdef MDS5_DEF
+#include "lEncrypt.h"
+#endif
 
 #ifndef Q2CH
     #define Q2CH toUtf8().data()
@@ -27,6 +33,10 @@ public:
     void setFile(QString);
     QString inode();
     QString inode(QString file);
+    QString inodeFull(QString file);
+    unsigned long inodeLong(QString f);
+    QString inodeDec(QString file);
+    QString path(QString file);
     QString modify();
     QString modify(QFileInfo *fi);
     QString modify(QString file);
@@ -34,6 +44,11 @@ public:
     QString size(QFileInfo *fi);
     QString size(QString file);
     QString TID(QString file);// same to modify
+    #ifdef MDS5_DEF
+    QString mds5(QString file);
+    QStringList cmd(QString c);
+    #endif
+
 
     QString getText(QString file);
     bool isFile(QString file);
