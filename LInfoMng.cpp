@@ -140,13 +140,16 @@ QString LInfo::getText(char ** array)
     int i;     
     ret = "";
     i=0;
+    str1 = "";
     while (ch[i] != NULL) 
     {
         str = ch[i];
-       
-        str1 = str + " = "  + m_map[str].toString() + "\n";
-        //qDebug() << "info = " << str1;
-        ret = ret + str1;
+        if (isKey(str)) 
+        {
+            str1 = str + " = "  + m_map[str].toString() + "\n";
+            ret = ret + str1;
+        }
+        
         i++;
     }
     return ret;

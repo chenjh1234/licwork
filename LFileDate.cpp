@@ -33,7 +33,7 @@ QString LFileDate::inode(QString file)
    QString str ;
    unsigned long il; 
    il = inodeLong(file);
-   str.sprintf("%08X",il);
+   str.sprintf("%08X",(int)il);
    return str;
 }
 QString LFileDate::inodeFull(QString file)
@@ -188,7 +188,8 @@ QString LFileDate::mds5(QString filen)
 
    if (f.open(QIODevice::ReadOnly)) 
    {
-       ba = f.readAll();
+       sz = f.size();
+       ba = f.read(sz);// readAll will change the file modify????,so chang to read;
        if (ba.size() >0) 
        {
            i = en.digest(ba.data(),ba.size(),ch);

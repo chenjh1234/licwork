@@ -263,7 +263,7 @@ int LLicFile::writeStream(QTextStream *outs)
    str1 = PACKAGE_REM;
    *outs << str1; 
    str1 = _package.getText();
-   *outs << str1;
+   *outs << str1; 
    //qDebug() << "len = " << outs->pos();
    len = str.length() + str1.length();
    return len;

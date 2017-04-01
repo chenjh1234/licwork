@@ -861,10 +861,12 @@ U_END
 U_START(saveDB)
 
     SLicMng sm;
+    LFileDate fd;
     int i;
     
     i = sm.data->saveDB();
     GT(i,0);
+    qDebug() << "db date = " << fd.TID("fileDB.db") << fd.modify("fileDB.db");
 
     sm.data->clear();
     EQ(sm.data->packSize(),0)
@@ -1027,6 +1029,15 @@ M_START
 
 #endif// end of whole  test 
 
- 
+ // test save and load DB:--------------
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(checkLoadFiles)
+     U_TEST(licAppAdd)
+     U_TEST(CkeckAppAdd)
+     U_TEST(reportPackApp)
+
+     U_TEST(saveDB)// save and clear  
+U_TEST(loadDB)
       
 M_END

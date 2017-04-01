@@ -128,8 +128,11 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    uuid = infoV->get(UUID).toString();
    borrow = infoV->get(BORROW).toString();
    venderName = infoV->get(VENDERNAME).toString();
+   smid = infoV->get(SERVERID).toString();
+
    lic.isVenderKeyValid(serverPri, infoV);// we do not if
    venderSign = lic.getVenderSign(); //  isVenderKeyValid make it available
+   
    
 
 // insert to Data:
@@ -163,6 +166,7 @@ int SLicMng::loadFile(QString filename, QString serverPri)
       infoSP->set(VENDERSIGN, venderSign);
       infoSP->set(BORROW, borrow);
       infoSP->set(UUID, uuid);
+      infoSP->set(SERVERID, smid);
 
       // qDebug() << "uuid ===" <<  infoSP->getText();
 
@@ -224,7 +228,9 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    LFileDate fd;
 
 // open file:
-   QString  venderKey, pKey,sPub,vSign,uuid;
+   QString  venderKey, pKey,sPub,vSign,uuid,mid;
+   mid = lic.getMid();
+
    fileo = fo;
    lfile = new LLicFile();
    i = lfile->readFile((char *)filename.Q2CH);
@@ -259,8 +265,8 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    QString pname,pver,packid,ptype,bmid,borrow;
 
    vName = infoV->get(VENDERNAME).toString();  
-   uuid = infoV->get(UUID).toString();// form inputfile
-   bmid = infoV->get(SERVERID).toString();// form inputfile
+   uuid = infoV->get(UUID).toString();// from inputfile
+   bmid = infoV->get(SERVERID).toString();// from inputfile
    
 
    infoP = lfile->package(0);
@@ -278,6 +284,7 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
       infoSP->set(BORROW,BORROW_NO);
       infoSP->set(UUID, uuid);
       infoSP->set(BMID, bmid);
+      infoSP->set(SERVERID, mid);// borrowIn serverID
 
       packid = data->encodePackageId(vName, pname, pver);
 
@@ -325,12 +332,10 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
 // get package keys:
    // pborrow:
    borrow = fd.getText(sPubOut);
-   //qDebug() << "borrow = " << borrow;
-    // tohex:
+   //qDebug() << "borrow = " << borrow;// tohex:
    borrow = data->hex(borrow);
-
    infoP->set(PBORROW,borrow);
-   //packid = data->encodePackageId(vName,pname,pver);
+   infoP->set(BMID,mid);
    //key:
    str = lic.digestPackageKey(venderKey, infoP);
    infoP->set(PKEY, str);  
@@ -348,6 +353,7 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    str = "borrow Lic  OK->" + fileo;
    cout << str.Q2CH << endl;
    #endif
+   return 1;
   
 }
 // report====================================
@@ -358,7 +364,7 @@ QStringList SLicMng::reportPackage()
     // name,ty,limit,start,end;
     int i,sz;
     QStringList packs,slist,rlist;
-    QString name,ty,size,str,limit,start,end,pack;
+    QString pack ;
   
     packs = data->packNames();
     sz = packs.size();
@@ -384,7 +390,6 @@ QStringList SLicMng::reportPackage(QString pack)
     len2 = 20;
     len3 = 25;
      
-  
     mng = data->packMng(pack);
 
     if (mng == NULL) return slist;

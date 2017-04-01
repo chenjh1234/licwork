@@ -9,14 +9,15 @@
 #define PSTARTDATE "startdate"
 #define PENDDATE "enddate"
 #define PKEY "key"
+#define BMID "bmid"
     // (char *)"borrow", // remove it 
 #define PACKAGE_KEYS_MIN {(char*)PACKAGENAME,(char*)PVERSION,(char*)PTYPE,(char*)PLIMIT,\
     (char *)PSTARTDATE,(char *)PENDDATE,(char *)PKEY,NULL} 
 #define PACKAGE_KEYS_OUT {(char*)PACKAGENAME,(char*)PVERSION,(char*)PTYPE,(char*)PBORROW,(char*)PLIMIT,\
-    (char *)PSTARTDATE,(char *)PENDDATE,(char *)PKEY,NULL} 
+    (char *)PSTARTDATE,(char *)PENDDATE,(char *)PKEY,(char *)BMID,NULL} 
     // borrow: yes:
 #define PACKAGE_KEYS_ALL {(char*)PACKAGENAME,(char*)PVERSION,(char*)PTYPE,(char*)PBORROW,(char*)PLIMIT,\
-    (char *)PSTARTDATE,(char *)PENDDATE,(char *)PKEY,NULL} 
+    (char *)PSTARTDATE,(char *)PENDDATE,(char *)PKEY,(char *)BMID,NULL} 
 
 #endif
 #if 0

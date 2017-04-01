@@ -81,7 +81,8 @@ public:
 
 // HH-------------------------------------------------------
     int appHB(SAppInfo &app);
-    int ckeckHB();
+    int checkHB();
+    int checkHB(QString pack);
 // DB------------------------------------------------
     int saveDB();
     int loadDB();
