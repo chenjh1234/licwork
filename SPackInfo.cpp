@@ -34,6 +34,16 @@ int SPackInfo::setStat()
     }
     return 1;
 }
+
+/// get real stat;;
+int SPackInfo::setUnload()
+{
+    int iflag ;
+    iflag = getStat();
+    if (iflag == STAT_OK) 
+        stat = STAT_UNLOAD;
+    return setStat();
+}
 /// get real stat;;
 int SPackInfo::getStat()
 {
@@ -41,14 +51,18 @@ int SPackInfo::getStat()
     LFileDate fd;
     QString str,str1,start,end;
     int iflag;
-    if (stat == STAT_UNLOAD) return STAT_UNLOAD;
- // get real stat in iflag;
     str = fd.curDT();
     start = get(PSTARTDATE).toString();
     end = get(PENDDATE).toString();
-    if (str < start ) iflag = STAT_OFF;
-    else if (str >= start && str <= end) iflag = STAT_OK;
-    else iflag = STAT_EXP;
+    if (str < start ) 
+        iflag = STAT_OFF;
+    else if (str >= start && str <= end) 
+    {
+        if (iflag != STAT_UNLOAD)  
+            iflag = STAT_OK;   
+    }
+    else 
+        iflag = STAT_EXP;
     return iflag;
 }
 /// @return 
@@ -69,8 +83,8 @@ bool SPackInfo::isBorrowIn()
 {
     QString str,bmid;
     int len = 5;
-    str = get("PBORROW").toString();
-    bmid = get("BMID").toString();
+    str = get(PBORROW).toString();
+    bmid = get(BMID).toString();
     if (str.length() > len && bmid.length() > len) return true;
      return false;
  
@@ -79,7 +93,8 @@ bool SPackInfo::isBorrowOut()
 {
     QString str,bmid;
     int len = 5;
-    bmid = get("BMID").toString();
+    bmid = get(BMID).toString();
+    //qDebug() << "isBorrowOut =" << bmid << bmid.length() << limit;
     if (bmid.length() > len && limit < 0 ) return true;
     return false;
 

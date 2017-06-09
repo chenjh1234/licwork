@@ -6,8 +6,8 @@
 #define SERVERNAME "servername"
 #define SERVERID "serverid"
 
-#define SERVERPRI "serverpri"
-#define SERVERPUB "serverpub"
+//#define SERVERPRI "serverpri"
+//#define SERVERPUB "serverpub"
 #define VENDERPRI "venderpri"
 #define VENDERPUB "venderpub"
 #define VENDERSEED "venderseed"
@@ -25,9 +25,10 @@
     (char *)UUID,\
     (char *)BORROW,(char *)VENDERKEY,NULL}  
     // borrow:yes|no
+    //(char *)SERVERPUB, (char *)SERVERPRI,  
 #define VENDER_KEYS_ALL {(char*)VENDERNAME,(char*)CLIENTNAME,(char*)SERVERNAME,(char*)SERVERID,\
     (char *)UUID,\
-    (char *)SERVERPUB, (char *)SERVERPRI, (char *)VENDERPUB, (char *)VENDERPRI, (char *)VENDERSEED,\
+    (char *)VENDERPUB, (char *)VENDERPRI, (char *)VENDERSEED,\
     (char *)BORROW,(char *)VENDERKEY,NULL}  
 
 #endif

@@ -48,11 +48,15 @@ public:
     ~SLicMng();
    
 //load file:unload file
-    int loadFile(QString filename,QString serverPri);
-    int checkLicFile(QString filename,QString serverPri);// loadFile used
+    //int loadFile(QString filename,QString serverPri);
+   // int checkLicFile(QString filename,QString serverPri);// loadFile used
+     int loadFile(QString filename);
+     int checkLicFile(QString filename);// loadFile used
     //
     //int unloadPackage(QString vender,QString package,QString version,QString serverPri);
-    int unloadFile(QString filename,QString serverPri);
+    //int unloadFile(QString filename,QString serverPri);
+    int unloadFile(QString filename,QString proofFile);
+    int removeFile(QString filename);
 //app login logout
     int loginApp(SAppInfo &msg);
     int logoutApp(SAppInfo &msg);
@@ -61,7 +65,11 @@ public:
 // borrow
     //QString filename, QString sPubIn,QString sPubOut,QString fo
     //int borrow(QString vender,QString package,QString version,QString type ,int number,QString start,QString end, QString mid);
-    int borrow(QString filename, QString sPubIn,QString sPubOut,QString fo);
+    //int borrow(QString filename, QString sPUBIn,QString sPUBOut,QString fo);
+    int borrow(QString filename,QString fo);// idIn ,we can get ,idout:get from samplefile:
+    int borrowReturn(QString fileProof);
+// dbpack2DB:
+    int packDB2DB();
 // report:
     QStringList reportPackage(QString packid);
     QStringList reportPackage();

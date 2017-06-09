@@ -2,7 +2,6 @@
 #define MY_HELP  "createlic outfilename\n"\
 "inputfile: licfile.sample \n"\
 "    venderPri: 1: form licfile.sample, 2:\"vender.pri\"\n"\
-"    ServerPub: 1: form licfile.sample, 2:\"vender.pri\"\n"\
 "    venderseed: from licfile.sample  \n"\
 "    vendername: from licfile.sample  \n"\
 "    serverid: mid of the server (length = 35)  \n"\
@@ -12,7 +11,6 @@
 "     if omit outfile = lic_clientname+_uuid_.lic\n"
 
 #define INPUT_ERR "Error: input file  licfile.sample Parser error \n"
-#define SERVERPUB_ERR "Error: server Pub file is not exist!!!\n"
 #define VENDERPRI_ERR "Error: vender Pri file is not exist!!!\n"
 #define VENDERKEY_ERR "Error: get vender key error\n"
 #define PACKAGEKEY_ERR "Error: get package key error\n"
@@ -32,8 +30,8 @@ void exitM(int id)
 
 }
 #ifndef TEST_UNIT
-#define SERVER_PUB "server.pub"
-#define SERVER_PRI "server.pri"
+//#define SERVER_PUB "server.pub"
+//#define SERVER_PRI "server.pri"
 #define VENDER_PUB "vender.pub"
 #define VENDER_PRI "vender.pri"
 
@@ -79,8 +77,8 @@ U_START(testCreateLic)
 
    infoV = lfile->vender();
    // serverPub file:
-   if (infoV->isKey(SERVERPUB))  sPub = infoV->get(SERVERPUB).toString();
-   else sPub = SERVER_PUB;
+//   if (infoV->isKey(SERVERPUB))  sPub = infoV->get(SERVERPUB).toString();
+//   else sPub = SERVER_PUB;
    // venderPri file:
    if (infoV->isKey(VENDERPRI))  vPri = infoV->get(VENDERPRI).toString();
    else vPri = VENDER_PRI;
@@ -89,11 +87,13 @@ U_START(testCreateLic)
    else vSeed = VENDER_SEED;
 // is serverPub,venserPri file exist:
    LFileDate fd;
+  #if 0
    if (!fd.isFile(sPub))
    {
       cout << SERVERPUB_ERR << "file = " << sPub.Q2CH << endl;
       exitM(1);
    }
+   #endif
    if (!fd.isFile(vPri))
    {
       cout << VENDERPRI_ERR << "file = " << vPri.Q2CH << endl;
@@ -114,7 +114,8 @@ U_START(testCreateLic)
    }
 
 //get venderKey
-   str = lic.encryptVenderKey(sPub,  vPri, infoV, vSeed);
+   //str = lic.encryptVenderKey(sPub,  vPri, infoV, vSeed);
+   str = lic.encodeVenderKey(vPri, infoV, vSeed);
    infoV->set(VENDERKEY, str);
 
    //qDebug() << "venderKey = " << VENDERKEY<<str;

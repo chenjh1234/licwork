@@ -44,6 +44,19 @@ int SLicData::removedSize()
 {
    return packRemoved.size();
 }
+QStringList SLicData::removedPackages()
+{
+   QString str;
+   QStringList slist;
+   int i;
+   for (i = 0; i < removedSize(); i++)
+   {
+      str = ((SPackInfo *)packRemoved.get(i))->packid;
+      slist << str;
+
+   }
+   return slist;
+}
 //------------ -----------------------app-----------------
 /// all apps in the DB
 int SLicData::appSize()
@@ -141,10 +154,26 @@ int SLicData::borrow(SPackInfo *pack)
    plog(pack, "borrow");
    return -2;
 }
-int SLicData::borrowReturn(SPackInfo *pack)
+int SLicData::borrowReturn(QString filen)
 {
-    return 1;
+    int i,ir;
+    SPackInfo *info;
+    QString packID;
+    info = NULL;
 
+    i = verifyProof(filen, info);
+    qDebug() << "verify return = " << i << info;
+    ir = i;
+    if (i >0) 
+    {
+        if (info != NULL) 
+        {
+            packID = info->packid;
+            ir = removePackage(packID, info); 
+        }
+        
+    }
+    return ir;
 }
 
 // =======add package==============interface=======
@@ -182,8 +211,29 @@ int SLicData::addPackage(SPackInfo *info) // base add
    //if (i <=0 ) info->err = "addPackage err";
    info->ret = i;
    plog(info, "addPackage");
+   if (i >0)  i = saveDBPackage();
    return i;
 
+}
+//-------unload:  packInfo * from packMng:--internal use
+/// return i  index of info in mng <0 err
+int SLicData::unloadPackage(QString packid, SPackInfo *info) // base remove
+{
+   int i;
+   SPackMng *mng;
+   QStringList slist;
+   // lock:
+   _lockPack.lock();
+   // lock:
+   //_lockPack.lock();
+   mng =  mapPack[packid];
+   i = mng->unloadInfo(info);
+   //qDebug() << "unloadP return ==" << i;
+   info->ret = i;
+   plog(info, "unloadPackage");
+   _lockPack.unlock();
+   if (i >=0)  i = saveDBPackage();
+   return i; // index of info in mng <0 err
 }
 //-------remove packInfo * from packMng:--internal use
 /// return i  index of info in mng <0 err
@@ -199,7 +249,7 @@ int SLicData::removePackage(QString packid, SPackInfo *info) // base remove
    mng =  mapPack[packid];
    //qDebug() << "removeP mng =" << mng << packid<< mng->size();
    i = mng->removeInfo(info);
-   //qDebug() << "removeP return ==" << i;
+   qDebug() << "removeP return ==" << i;
    if (i >= 0)
    {
       //info->nameid = packid;
@@ -212,12 +262,14 @@ int SLicData::removePackage(QString packid, SPackInfo *info) // base remove
    }
    // unlock
    _lockPack.unlock();
-
+   if (i == 0) i = 1;
    info->ret = i;
    plog(info, "removePackage");
+   if (i >=0)  i = saveDBPackage();
    return i; // index of info in mng <0 err
 }
 //----------remove uuid---------for unload license file------------------------------
+/// remove info from uuid: return ret removed info
 /// remove info from uuid: return ret removed info
 int SLicData::removePackage(QString uuid)
 {
@@ -237,7 +289,7 @@ int SLicData::removePackage(QString uuid)
    {
       slist = umap.keys();
       //qDebug()<< "find uuid ,slist= " << slist ;
-      for (i = 0; i < sz; i++) // all uuid in differnt mng;
+      for (i = 0; i < sz; i++) // all uuid in different mng;
       {
          info = umap[slist[i]];
          ret1 = removePackage(slist[i], info);
@@ -252,8 +304,9 @@ int SLicData::removePackage(QString uuid)
          }
          else
          {
-            //str = "OK removePackage(QString uuid) packid = " + slist[i];
-            // plog(str);
+            // plog in upper subs
+            // str = "OK unloadPackage(QString uuid) packid = " + slist[i];
+            //plog(str);
          }
       } //
 
@@ -264,7 +317,7 @@ int SLicData::removePackage(QString uuid)
       plog(err);
    }
    // log
-   if (ret == sz && ret != 0)
+   if (ret == sz && ret > 0)
    {
       err = "OK:  removePackage(QString uuid): is OK removed package number = " + QString("%1 ").arg(sz) + uuid;
       plog(err);
@@ -274,6 +327,223 @@ int SLicData::removePackage(QString uuid)
       err = "ERR:  removePackage(QString uuid): is Err removed package number = " + QString("%1 ").arg(ret) + uuid;
       plog(err);
    }
+   return ret;
+}
+int SLicData::unloadPackage(QString uuid,QString filen)
+{
+   int i, sz, ret, ret1;
+   QMap<QString, SPackInfo *> umap;
+   SPackInfo *info;
+   QStringList slist;
+   QString err, str;
+   QString filenn;
+
+   umap = findPackageInfo(UUID, uuid);
+
+   sz = umap.size();
+   ret = sz;
+   int ir;
+
+   // qDebug() << "umap.sz = " << sz;
+   if (sz > 0)
+   {
+      slist = umap.keys();
+      //qDebug()<< "find uuid ,slist= " << slist ;
+      for (i = 0; i < sz; i++) // all uuid in different mng;
+      {
+
+         info = umap[slist[i]];
+         // qDebug() << i;<< info;
+         ret1 = unloadPackage(slist[i], info);
+         //qDebug()<< "inloop " << i << ret1;
+         if (ret1 < 0)
+         {
+            ret = i;
+            //info->ret = ret1;
+            //info->err += "removePackage(QString uuid) packid = " + slist[i];
+            //plog(info);
+            break;
+         }
+         else
+         {
+            // plog in upper subs
+            // str = "OK unloadPackage(QString uuid) packid = " + slist[i];
+            //plog(str);
+             if (i == 0) filenn = filen;
+             else
+                filenn = filen + QString("%1").arg(i);
+             ir = createProof(filenn, info); 
+             //qDebug() << ir;
+             if (ir<0) 
+             {
+                 ret = i;
+                 break;
+             }
+         }
+      } //for
+
+   }
+   else
+   {
+      err = "Error:  unloadPackage(QString uuid): not find uuid";
+      plog(err);
+   }
+   //qDebug() << "unload out";
+   // log
+   if (ret == sz && ret > 0)
+   {
+      err = "OK:  unloadPackage(QString uuid): is OK removed package number = " + QString("%1 ").arg(sz) + uuid;
+      plog(err);
+   }
+   else
+   {
+      err = "ERR:  unloadPackage(QString uuid): is Err removed package number = " + QString("%1 ").arg(ret) + uuid;
+      plog(err);
+   }
+   
+   return ret;
+}
+/// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
+int SLicData::createProof(QString filen, SPackInfo *inf)
+{
+   int sz, i, ret, len;
+   QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
+   QString proof, enProof;
+   LEncrypt en;
+   char buf[20480];
+
+   packID = inf->packid;
+   ty = inf->get(PTYPE).toString();
+   limit = inf->get(PLIMIT).toString();
+   start = inf->get(PSTARTDATE).toString();
+   end = inf->get(PENDDATE).toString();
+   sinID = inf->get(SERVERID).toString();
+   soutID = inf->get(BMID).toString();
+   uuid = inf->get(UUID).toString();
+   sign = inf->get(VENDERSIGN).toString();
+   printf("11111\n");
+   proof = packID + DELIMIT_PROOF + ty + DELIMIT_PROOF + limit + DELIMIT_PROOF + start + DELIMIT_PROOF + end + DELIMIT_PROOF + sinID + DELIMIT_PROOF + soutID + DELIMIT_PROOF + uuid + DELIMIT_PROOF + sign;
+   len = en.encrypt(proof.Q2CH, proof.length(), buf, PASSWD_PROOF);
+   if (len <= 0)  return -1; // encrypt failed
+   qDebug() << proof;
+//geoeast_pc1_1.0%%task%%2%%20170101%%20180101%%73947D61-D163D96C-03295769-F3BF5EB7%%73947D61-D163D96C-03295769-F3BF5EB7%%df3d81d2-2484-45d3-8bb4-79d161691cf3%%0B2C366330A53B2FE2B17FD57103BE69615166AB47FAC728B243E5991F5265C41FB8BB48BC9F76EE649E05A29871EDF75EF52F0431F7270BF2FA8446C60A5F8BEF664386890BC4BBB7F92591B63AFA73E443ABC2B223B61B9481CF9CD99DEEAC2D37391BFF3429BDC83E4C96B438FAF70DA35475C3E87581CEF1E3D8DD8CF5F8
+   //qDebug() <<  "encrypt proof len = " << proof.length() << len;
+   //printf("22222\n");
+// encrypt OK:
+
+   QFile file(filen);
+   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -2;
+
+   ret = file.write(buf, len);
+   if (ret != len)  return -3;
+
+   //qDebug() <<  "write proof len = " <<  ret;
+
+   file.close();
+   ret = 1;
+   return ret;
+}
+/// inf:found the Package borrowOut,for borrow return;
+int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
+{
+   int sz, i, len;
+   QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
+   QString proof, err;
+   LEncrypt en;
+   int ret;
+
+
+   char buf[20480];
+   char bufo[20480];
+
+   QFile file(filen);
+   if (!file.open(QIODevice::ReadOnly)) return -1;
+   len = file.size();
+   //qDebug() << "files size =  = " << len << filen;
+
+   i = file.read(buf, len);
+   if (i != len)  return -2;
+   file.close();
+   //qDebug() << "len = " << len;
+   i = en.decrypt(buf, len, bufo, PASSWD_PROOF);
+   if (i <= 0) return -3;
+   len = i;
+// decrypt ok;
+   bufo[len] = 0; // truncate;
+   proof = bufo;
+   //qDebug() << "decrypt proof = " << proof;
+
+   QStringList slist;
+   slist = proof.split(DELIMIT_PROOF);
+   i = 0;
+   packID = slist[i]; i++;
+   ty = slist[i]; i++;
+   limit = slist[i]; i++;
+   start = slist[i]; i++;
+   end = slist[i]; i++;
+   sinID = slist[i]; i++;
+   soutID = slist[i]; i++;
+   uuid = slist[i]; i++;
+   sign = slist[i]; i++;
+// found the rigth info:
+
+   SPackMng *mng;
+   SPackInfo *info;
+   QString  ty1,  start1, end1, sinID1, soutID1, uuid1, sign1;
+ 
+
+   i = 0;
+   ret = -1;
+   err = "";
+   // found the rigth info:
+   if (isPackidInPack(packID))
+   {
+      mng = mapPack[packID];
+      if (mng != NULL)
+      {
+          //qDebug() << "mngSize = " << mng->size();
+         for (i = 0; i < mng->size(); i++)
+         {
+            info = (SPackInfo *) mng->get(i);
+            if (info == NULL) break;
+            //qDebug() << "limit = " << limit.toInt() << info->limit << info->isBorrowOut() << info->get(BMID).toString();
+            if (limit.toInt() == (-1 *info->limit) && info->isBorrowOut())
+            {
+               ty1 = info->get(PTYPE).toString();
+               start1 = info->get(PSTARTDATE).toString();
+               end1 = info->get(PENDDATE).toString();
+               sinID1 = info->get(BMID).toString();
+               soutID1 = info->get(SERVERID).toString();
+               uuid1 = info->get(UUID).toString();
+               sign1 = info->get(VENDERSIGN).toString();
+               qDebug() << "found info = " << packID << ty1<< start1<<end1<< sinID1<<soutID1<<uuid1 << sign1;
+               if (ty == ty1&& start == start1 &&end == end1 &&sinID ==soutID1 && soutID == soutID1 && uuid == uuid1 && sign == sign1) 
+               {
+                   ret = 1;
+                   retInfo = info;
+                   break;
+               }
+            }
+            else continue;
+         }
+      }
+      else err = " packMng is NULL";
+   }
+   else err = " no this packID = " + packID;
+   if (ret == -1)  
+   {
+       retInfo = NULL;
+       err = "verify proof : " + err;
+       plog(err);
+   }
+   else
+   {
+       retInfo = info;
+       plog(info,"verifyProof");
+   }
+
+   qDebug() << "verify proof err = " << err << info<<retInfo;
+ 
    return ret;
 }
 //============================================service functions===================
@@ -674,6 +944,7 @@ void SLicData::alog(SAppInfo *info)
    _lockLog.unlock();
 }
 //====================================saveDB==============loadDB============
+#if 0
 int SLicData::saveDB()
 {
    int sz, i;
@@ -681,6 +952,7 @@ int SLicData::saveDB()
    QStringList slist;
 
    fileDB = getDBFile();
+   //qDebug() << " save app ok0=" << _dt.TID(fileDB);
    QFile file(fileDB);
    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
 
@@ -698,6 +970,7 @@ int SLicData::saveDB()
    }
 //qDebug() << " save pack ok sz = " << sz;
 // app:
+//qDebug() << " save app ok1=" << _dt.TID(fileDB);
    SAppMng *amng;
    slist = appPacks();
    ds << slist;
@@ -712,12 +985,79 @@ int SLicData::saveDB()
       if (amng != NULL)  amng->encode(ds);
    }
 // close
+//ds.flush();
    file.flush();
    file.close();
-   qDebug() << " save app ok";
+   qDebug() << " save app ok=" << _dt.TID(fileDB);
    return saveDBMsg();
 }
+#endif
+#if 1 // new one
+int SLicData::saveDB()
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
 
+   fileDB = getDBFile();
+   //qDebug() << " save app ok0=" << _dt.TID(fileDB);
+   QFile file(fileDB);
+   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
+
+   QDataStream ds(&file);
+   saveDBPack(ds);
+   saveDBApp(ds);
+ 
+// close
+//ds.flush();
+   file.flush();
+   file.close();
+   //qDebug() << " save app ok=" << _dt.TID(fileDB);
+   return saveDBMsg();
+}
+#endif
+
+int SLicData::saveDBPack(QDataStream &ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+ 
+// pack:
+   SPackMng *pmng;
+   slist = packNames();
+   ds << slist;
+
+   sz = packSize();
+   for (i = 0; i < sz; i++)
+   {
+      pmng = mapPack[slist[i]];
+      pmng->encode(ds);
+   }
+   return sz;
+}
+int SLicData::saveDBApp(QDataStream &ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+ 
+   SAppMng *amng;
+   slist = appPacks();
+   ds << slist;
+
+   sz = appPackSize();
+   //qDebug() << "appsize = " <<sz;
+   for (i = 0; i < sz; i++)
+   {
+      //  qDebug() << i << slist[i];
+      amng = mapApp[slist[i]];
+      // qDebug() << i << slist[i] << amng;
+      if (amng != NULL)  amng->encode(ds);
+   }
+   return sz;
+}
+#if 0
 int SLicData::saveDBMsg()
 {
    int sz;
@@ -732,12 +1072,12 @@ int SLicData::saveDBMsg()
    QString fpath, fcdate, fmds5, finode, fsz;
    QFileInfo fi(fileDB);
 //qDebug() << " save DBMsg";
-   fpath = fi.absoluteFilePath(); 
+   fpath = fi.absoluteFilePath();
    fmds5 = _dt.mds5(fileDB);       // chang the TID of the file
    finode = _dt.inodeFull(fileDB);
    fsz = _dt.size(fileDB);
    fcdate = _dt.TID(fileDB);
-   
+
 #if 1
    qDebug() << fpath;
    qDebug() << fcdate;
@@ -746,9 +1086,10 @@ int SLicData::saveDBMsg()
    qDebug() << fsz;
 #endif
    //open:
-    
+
    if (!ptr.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -2;
    QDataStream ds(&ptr);
+   // msg of db:
    ds << fpath;
    ds << fcdate;
    ds << fmds5;
@@ -759,9 +1100,12 @@ int SLicData::saveDBMsg()
    QFileInfo fii(filePtr);
    fpath = fii.absoluteFilePath();
    finode = _dt.inodeFull(filePtr);
-     
+   //msg of ptr:
    ds << fpath;
    ds << finode;
+   QString randT;
+   randT = _dt.randText10();
+   ds << randT; //make the ptr file rand length;
    fcdate = _dt.TID(filePtr);
    ds << fcdate;
    ptr.flush();
@@ -777,7 +1121,81 @@ int SLicData::saveDBMsg()
 
    return sz + 4;
 }
-#define RET(x) {cout << x <<endl; return -1;}
+#endif
+#if 1
+int SLicData::saveDBMsg()
+{
+
+   QString fileDB, filePtr;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   filePtr = getDBFileIndex();
+   return saveDBMsg(fileDB,filePtr);
+}
+#endif
+int SLicData::saveDBMsg(QString fileDB,QString filePtr)
+{
+   int sz;
+   QStringList slist;
+
+   QFile ptr(filePtr);
+// dbMsge:
+   QString fpath, fcdate, fmds5, finode, fsz;
+   QFileInfo fi(fileDB);
+//qDebug() << " save DBMsg";
+   fpath = fi.absoluteFilePath();
+   fmds5 = _dt.mds5(fileDB);       // chang the TID of the file
+   finode = _dt.inodeFull(fileDB);
+   fsz = _dt.size(fileDB);
+   fcdate = _dt.TID(fileDB);
+
+#if 1
+   qDebug() << fpath;
+   qDebug() << fcdate;
+   qDebug() << fmds5;
+   qDebug() << finode;
+   qDebug() << fsz;
+#endif
+   //open:
+//save to PTR:
+   if (!ptr.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -2;
+   QDataStream ds(&ptr);
+   // msg of db:
+   ds << fpath;
+   ds << fcdate;
+   ds << fmds5;
+   ds << finode;
+   ds << fsz;
+   ptr.flush();
+   // my inode:
+   QFileInfo fii(filePtr);
+   fpath = fii.absoluteFilePath();
+   finode = _dt.inodeFull(filePtr);
+   //msg of ptr:
+   ds << fpath;
+   ds << finode;
+   QString randT;
+   randT = _dt.randText10();
+   qDebug() <<"rndt = " << randT.length() << randT;
+   ds << randT; //make the ptr file rand length;
+   fcdate = _dt.TID(filePtr);
+   ds << fcdate;
+   ptr.flush();
+   sz = ptr.size();
+   ds << sz + 4;
+   ptr.close();
+// save to EN:
+// ptr Mds5 save:
+   qDebug() << "date db end0= " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
+   fmds5 = _dt.mds5(filePtr);
+   QSettings st(ORG_NAME, SAPP_NAME);
+   st.setValue(filePtr, fmds5);
+   qDebug() << "date db end = " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
+
+   return sz + 4;
+}
+#if 0
 int SLicData::loadDBMsg()
 {
    int sz;
@@ -818,11 +1236,11 @@ int SLicData::loadDBMsg()
    if (str != fpath) RET("DB filePath error");
    ds >> str;
 
-   ilen = abs(str.toLong() - fcdate.toLong());
+   ilen = abs(_dt.diffDT(str, fcdate));
    qDebug() << " DB Date = " << str << fcdate << ilen;
 
    //if(str != fcdate) RET("DB fileDate error");
-   if (ilen > 1) RET("DB fileDate error");
+   if (ilen > DBDATE_MIS) RET("DB fileDate error");
    ds >> str;
    if (str != fmds5) RET("DB fileContains error");
    ds >> str;
@@ -841,11 +1259,103 @@ int SLicData::loadDBMsg()
    if (str != fpath) RET("DB_Ptr filePath error");
    ds >> str;
    if (str != finode) RET("DB_Ptr fileInode error");
+   ds >> str; // randText10: make the ptr file rand length;
    ds >> str;
-   ilen = abs(str.toLong() - fcdate.toLong());
+   //ilen = abs(str.toLong() - fcdate.toLong());
+   ilen = abs(_dt.diffDT(str, fcdate));
    qDebug() << " ptr Date = " << str << fcdate << ilen;
 
-   if (ilen > 1) RET("DB_ptr fileDate error");
+   if (ilen > DBDATE_MIS) RET("DB_ptr fileDate error");
+   //if(str != fcdate) RET("DB_Ptr fileDate error");
+
+   ds >> i;
+   if (i != sz) RET("DB_Ptr fileSize error");
+
+   ptr.close();
+   return sz;
+}
+#endif
+#define RET(x) {cout << x <<endl; return -1;}
+int SLicData::loadDBMsg()
+{
+   int sz;
+   QString fileDB, filePtr;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   filePtr = getDBFileIndex();
+   return loadDBMsg(fileDB,filePtr);
+}
+int SLicData::loadDBMsg(QString fileDB,QString filePtr)
+{
+   int sz;
+ //  QString fileDB, filePtr;
+   QStringList slist;
+
+ //  fileDB = getDBFile();
+ //  filePtr = getDBFileIndex();
+
+   QFile ptr(filePtr);
+
+   QString fpath, fcdate, fmds5, finode, fsz;
+   QFileInfo fi(fileDB);
+   // ptr Mds5 load:
+   fmds5 = _dt.mds5(filePtr);
+   QSettings st(ORG_NAME, SAPP_NAME);
+   fsz = st.value(filePtr, fmds5).toString();
+   if (fsz != fmds5) RET("DB_PTR fileContains error");
+
+   fpath = fi.absoluteFilePath();
+   fcdate = _dt.TID(fileDB);
+   fmds5 = _dt.mds5(fileDB);
+   finode = _dt.inodeFull(fileDB);
+   fsz = _dt.size(fileDB);
+#if 1
+   qDebug() << fpath;
+   qDebug() << fcdate;
+   qDebug() << fmds5;
+   qDebug() << finode;
+   qDebug() << fsz;
+#endif
+//open:
+   int ilen;
+   QString str;
+   if (!ptr.open(QIODevice::ReadOnly)) return -2;
+   QDataStream ds(&ptr);
+   ds >> str;
+   if (str != fpath) RET("DB filePath error");
+   ds >> str;
+
+   ilen = abs(_dt.diffDT(str, fcdate));
+   qDebug() << " DB Date = " << str << fcdate << ilen;
+
+   //if(str != fcdate) RET("DB fileDate error");
+   if (ilen > DBDATE_MIS) RET("DB fileDate error");
+   ds >> str;
+   if (str != fmds5) RET("DB fileContains error");
+   ds >> str;
+   if (str != finode) RET("DB fileInode error");
+   ds >> str;
+   if (str != fsz) RET("DB fileSize error");
+
+   QFileInfo fii(filePtr);
+   int i;
+   fpath = fii.absoluteFilePath();
+   finode = _dt.inodeFull(filePtr);
+   fcdate = _dt.TID(filePtr);
+   sz = ptr.size();
+
+   ds >> str;
+   if (str != fpath) RET("DB_Ptr filePath error");
+   ds >> str;
+   if (str != finode) RET("DB_Ptr fileInode error");
+   ds >> str; // randText10: make the ptr file rand length;
+   ds >> str;
+   //ilen = abs(str.toLong() - fcdate.toLong());
+   ilen = abs(_dt.diffDT(str, fcdate));
+   qDebug() << " ptr Date = " << str << fcdate << ilen;
+
+   if (ilen > DBDATE_MIS) RET("DB_ptr fileDate error");
    //if(str != fcdate) RET("DB_Ptr fileDate error");
 
    ds >> i;
@@ -863,6 +1373,7 @@ QString SLicData::getDBFileIndex()
 {
    return DB_FILE_PTR;
 }
+#if 0 // old one
 int SLicData::loadDB()
 {
    int sz, i;
@@ -910,6 +1421,134 @@ int SLicData::loadDB()
    return 1;
 
 }
+#endif
+#if 1 // new one
+int SLicData::loadDB()
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+   if (!isDBRegisted())
+   {
+      i = registerDB();
+      return i;
+   }
+   i = loadDBMsg();
+   if (i <= 0)  return -1;
+
+   fileDB = getDBFile();
+   QFile file(fileDB);
+   if (!file.open(QIODevice::ReadOnly)) return -1;
+   QDataStream ds(&file);
+   loadDBPack(ds);
+   loadDBApp(ds);
+// close
+   file.close();
+   return 1;
+
+}
+#endif
+int SLicData::loadDBPack(QDataStream &ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+// pack:
+   SPackMng *pmng;
+
+   ds >> slist;
+   sz = slist.size();
+   //qDebug() << "slist in load = " << slist;
+   for (i = 0; i < sz; i++)
+   {
+      pmng = new SPackMng();
+      pmng->decode(ds);
+      //qDebug() << "inloop = " << i <<   pmng->size() << pmng->getText();
+      mapPack[slist[i]] = pmng;
+   }
+   return sz;
+}
+int SLicData::loadDBApp(QDataStream &ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+ 
+// app:
+   SAppMng *amng;
+   ds >> slist;
+
+   sz = slist.size();
+   for (i = 0; i < sz; i++)
+   {
+      amng = new SAppMng();
+      amng->decode(ds);
+      mapApp[slist[i]] = amng;
+   }
+}
+//================packDB interface====================================
+int  SLicData::saveDBPackage()
+{
+   int sz, i;
+   QString fileDB,filePtr;
+   QStringList slist;
+
+   fileDB = getDBPackFile();
+   filePtr = getDBPackFileIndex();
+   //qDebug() << " save app ok0=" << _dt.TID(fileDB);
+   QFile file(fileDB);
+   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -1;
+
+   QDataStream ds(&file);
+   saveDBPack(ds);
+  // saveDBApp(ds);
+
+   file.flush();
+   file.close();
+   //qDebug() << " save app ok=" << _dt.TID(fileDB);
+   return saveDBMsg(fileDB,filePtr);
+}
+int  SLicData::loadDBPackage()
+{
+
+   #if 0 // we donot care register here,only load the package
+   if (!isDBRegisted())
+   {
+      i = registerDB();
+      return i;
+   }
+   #endif 
+   int sz, i;
+   QString fileDB,filePtr;
+   QStringList slist;
+
+   fileDB = getDBPackFile();
+   filePtr = getDBPackFileIndex();
+
+   i = loadDBMsg(fileDB,filePtr);
+   if (i <= 0)  return -1;
+
+   fileDB = getDBFile();
+   QFile file(fileDB);
+
+   if (!file.open(QIODevice::ReadOnly)) return -1;
+   QDataStream ds(&file);
+   loadDBPack(ds);
+// close
+   file.close();
+   return 1;
+}
+QString  SLicData::getDBPackFile()
+{
+     return DB_PACKFILE;
+}
+QString  SLicData::getDBPackFileIndex()
+{
+    return DB_PACKFILE_PTR;
+
+}
+//==========clear:
+/// clear db
 int SLicData::clear()
 {
    int sz, i;
@@ -997,18 +1636,18 @@ int SLicData::appHB(SAppInfo& app)
 }
 int SLicData::checkHB()
 {
-    int i,sz;
-    QStringList packs;
-    QString pack;
-  
-    packs = packNames();
-    sz = packs.size();
-    for (i = 0; i <sz; i++) 
-    {
-        pack = packs[i];
-        checkHB(pack);   
-    }  
-    return 1;
+   int i, sz;
+   QStringList packs;
+   QString pack;
+
+   packs = packNames();
+   sz = packs.size();
+   for (i = 0; i < sz; i++)
+   {
+      pack = packs[i];
+      checkHB(pack);
+   }
+   return 1;
 }
 int SLicData::checkHB(QString pack)
 {
@@ -1021,7 +1660,7 @@ int SLicData::checkHB(QString pack)
    QString appid, user, ty, str, start;
    //long start;
    LFileDate fd;
-  
+
 
    mng = appMng(pack);
 
@@ -1035,13 +1674,13 @@ int SLicData::checkHB(QString pack)
       if (info->checkHB())
       {
          ir = rmApp(*info);
-         if (ir >0) 
+         if (ir > 0)
          {
-              qDebug() << "check hearBeat rmApp OK appid = "<< info->packid << info->appid;
+            qDebug() << "check hearBeat rmApp OK appid = " << info->packid << info->appid;
          }
          else
          {
-             qDebug() << "check hearBeat rmApp Err appid = "<< info->packid << info->appid;
+            qDebug() << "check hearBeat rmApp Err appid = " << info->packid << info->appid;
          }
       }
    }

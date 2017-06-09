@@ -31,6 +31,7 @@ public:
     int add(SPackInfo *inf);
     int remove(SPackInfo * inf);
     int changed(SPackInfo * inf,int change);
+
     SPackInfo * find(SPackInfo * inf);
     int appRequest(SAppInfo &info,SAppMng *mng);
     int appRelease(SAppInfo &info,SAppMng *mng);
@@ -53,6 +54,7 @@ public:
     //
     int addInfo(SPackInfo *inf);
     int removeInfo(SPackInfo *inf);
+    int unloadInfo(SPackInfo *inf);// make the limit = 0;
     int clear();
     // 
     int encode(QDataStream &ds);

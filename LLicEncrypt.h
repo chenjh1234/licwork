@@ -7,7 +7,7 @@
 #include "LEncrypt.h"
 
 #define MID_LEN 35
-
+//#define PASSWD_SIGN "1234567890"
 
 #define VENDER_DELIMIT "%%"
 
@@ -35,7 +35,8 @@ public:
     LLicFile * getLicFile();
 
 
-//createLic:  serverPub,venderPri,venderSeed
+//createLic:   venderPri,venderSeed
+#if 0 // donot use server pub now
    //venderKey:
     /** @brief   encrypt vender message with serverPubKey and
                  encodeHex , getvenderKey;
@@ -43,13 +44,29 @@ public:
     */ 
     QString encryptVenderKey(QString ServerPub, QString venderPri, LInfo *infoVender,QString venderSeed);
     QString encryptVenderKey(QString ServerPub,LInfo *infoVender,QString venderSign);// for borrow
-    //QString encryptVenderKey(QString ServerPub,QString venderSign, LInfo * infoVender);
+
      /// sign venderSeed+serverPubKey with venderPriKeyfile and encodeHex : Vpri(Spub,VenderSeed)  
     QString signVenderSeed(QString venderPri,QString venderSeed,QString serverPub); 
      /** @brief  compose the vender messages to encodeMsg as the
       *          encrypt input
      */
     QString encodeVender(QString venderName,QString ServerID,QString uuid, QString borrow ,QString enSeed);//5     
+#endif
+   /** @brief    venderKey; =
+                 digest(serverMsg) + signSeed
+                 signSeed = venderSeed+serverID
+        @param infoVender  is from LLicFile
+    */ 
+    QString encodeVenderKey(QString venderPri, LInfo *infoVender,QString venderSeed);
+    QString encodeVenderKey(LInfo *infoVender,QString venderSign);// for borrow
+
+     /// sign venderSeed+serverID with venderPriKeyfile and encodeHex : Vpri(Spub,VenderID)  
+    QString signVenderSeed(QString venderPri,QString venderSeed,QString serverID); 
+     /** @brief  compose the vender messages to encodeMsg as the
+      *          digest input
+     */
+    QString encodeVender(QString venderName,QString ServerID,QString uuid, QString borrow ,QString venderSign);//5  
+    QString encodeSign(QString sign,QString pass);    
 
     //packageKey: 
    /** @brief   digest venderKey+encodedPackageMsg  
@@ -64,14 +81,17 @@ public:
 //server: serverPri,serverPub,venderPub;borrowInPub,borrwOutPub
     // vender:
     /// if venderKey is valid load when load file, getvenderSign to _venderSign;
-    bool isVenderKeyValid(QString ServerPri,LInfo * infoVender);
+    //bool isVenderKeyValid(QString ServerPri,LInfo * infoVender);
+    bool isVenderKeyValid(LInfo * infoVender);
+    QString decodeSign(QString sign,QString pass);  
     QString getVenderSign(){return _venderSign;};//  isVenderKeyValid() make it availibale
-  
+ #if 0
  
     ///   decrypt vender message with serverPriKey (hexDecode and decryptPri)
     QString decryptVenderKey(QString ServerPri,QString venderKey);
     /// decode vender Message 
-    void decodeVender(QString venderKey,QString &venderName,QString &ServerID,QString &uuid, QString &borrow,QString &enSeed);//5    
+    void decodeVender(QString venderKey,QString &venderName,QString &ServerID,QString &uuid, QString &borrow,QString &enSeed);//5   
+ #endif 
     // package:  
     /// if PackageKey is valid , when load file
     bool isPackageKeyValid(QString venderKey,LInfo * infoPackage); 
@@ -80,7 +100,8 @@ public:
      
 // app: venderSeed ,venderPubChar
     /// verify signed VenderSeed&serverPub
-    bool verifyVenderSeed(QString venderPubChar ,QString venderSign, QString vendSeed,QString serverPub); //4 verify venderSeed & serverPub    app use it
+    //bool verifyVenderSeed(QString venderPubChar ,QString venderSign, QString vendSeed,QString serverPub); //4 verify venderSeed & serverPub    app use it
+    bool verifyVenderSeed(QString venderPubChar ,QString venderSign, QString vendSeed,QString serverID); //4 verify venderSeed & serverPub    app use it
 /// geMid
     QString getMid();
     QString getMidMark();

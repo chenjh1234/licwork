@@ -22,7 +22,7 @@ int PResource::add(SPackInfo *info)
    return i;
 
 }
-int PResource::changed(SPackInfo *inf,int change)
+int PResource::changed(SPackInfo *inf, int change)
 {
    int i;
    int b;
@@ -30,29 +30,29 @@ int PResource::changed(SPackInfo *inf,int change)
    if (inf == NULL) return i;
    SPackInfo *info;
    info = find(inf);
-   if (info == NULL) return i;// found it:
+   if (info == NULL) return i; // found it:
 
    b = -1;
 
-    
-      limit = limit + change; // limit of sourece;
-      for (i = 0; i < size(); i++)
+
+   limit = limit + change; // limit of sourece;
+   for (i = 0; i < size(); i++)
+   {
+      info = pList[i];
+      if (info == inf)  b = i;
+      if (b == -1) continue;
+      // change start and limit;
+      if (b == i)
       {
-         info = pList[i];
-         if (info == inf )  b = i;
-         if (b == -1) continue;
-         // change start and limit;
-         if (b == i) 
-         {
-             inf->limit + change;
-             inf->stat = info->getStat();
-         }
-         else
-         {
-             info->start = info->start +change;
-         }
+         inf->limit + change;
+         inf->stat = info->getStat();
       }
-      i = 1;
+      else
+      {
+         info->start = info->start + change;
+      }
+   }
+   i = 1;
 
    return i;
 
@@ -300,12 +300,12 @@ void SPackMng::init()
    ruser.type = PTYPE_USER;
    rnode.type = PTYPE_NODE;
 }
-PResource * SPackMng::getPResource(QString ty)
+PResource* SPackMng::getPResource(QString ty)
 {
-    if (ty == PTYPE_TASK) return &rtask;
-    if (ty == PTYPE_USER) return &ruser;
-    if (ty == PTYPE_NODE) return &rnode;
-    return NULL;
+   if (ty == PTYPE_TASK) return &rtask;
+   if (ty == PTYPE_USER) return &ruser;
+   if (ty == PTYPE_NODE) return &rnode;
+   return NULL;
 }
 // -----------------rsize()-------------------------
 int SPackMng::taskSize()
@@ -353,7 +353,7 @@ int SPackMng::nodeUsed()
    return rnode.used;
 }
 
-//----------------------------------------------
+//-----------remove Info-----------------------------------
 int SPackMng::removeInfo(SPackInfo *info)
 {
    /////////
@@ -390,7 +390,63 @@ int SPackMng::removeInfo(SPackInfo *info)
          info->err = str;
       }
    }
-   
+
+   _lock.unlock();
+   return ret;
+}
+int SPackMng::unloadInfo(SPackInfo *info)
+{
+   /////////
+   int  ret, limit;
+   QString ty, str;
+   //SPackInfo *inf;
+   _lock.lock();
+
+   limit = info->limit;
+   if (limit > 0)
+   {
+      //start:
+      limit = limit * -1;
+      //qDebug() << "limit = " << limit;
+
+      ty = info->get(PTYPE).toString();
+      if (ty == PTYPE_TASK)
+      {
+         ret = rtask.changed(info, limit);
+      }
+      else if (ty == PTYPE_NODE)
+      {
+         ret = rnode.changed(info, limit);
+      }
+      else if (ty == PTYPE_USER)
+      {
+         ret = ruser.changed(info, limit);
+      }
+      //
+      if (ret < 0)
+      {
+         str = "SPackMng::unloadInfo: Remove info  From Presource Error ty =" + ty;
+         info->err = str;
+      }
+      else
+      {
+         ret =  info->setUnload(); // in main mng,
+         if (ret < 0)
+         {
+            str = "SPackMng::unloadInfo: Remove info Error";
+            info->err = str;
+         }
+      }
+
+   }
+   else
+   {
+      str = "SPackMng::unloadInfo: Can not unload a borrow out license Error";
+      info->err = str;
+      ret = -1;
+   }
+  // qDebug() << " SPackMng::unloadInfo(SPackInfo *info) ret = " << ret ;
+
    _lock.unlock();
    return ret;
 }
@@ -511,15 +567,15 @@ int SPackMng::decode(QDataStream& ds)
 /// @return i>=0 ok ;
 int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
 {
-    //qDebug() << __FUNCTION__;
+   //qDebug() << __FUNCTION__;
 
    _lock.lock();
    QString str; //, packid, appid;
    int i; //, number;
-   //qDebug() << " over lock";
+          //qDebug() << " over lock";
    if (mng != NULL)
    {
-       qDebug() << "id = " << info.appid;
+      qDebug() << "id = " << info.appid;
       if (mng->find(info.appid) >= 0)
       {
          //qDebug() << "mng find the appid = " << info.appid;
@@ -527,7 +583,7 @@ int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
          _lock.unlock();
          return -1;
       }
-       qDebug() << "no this id ";
+      qDebug() << "no this id ";
    }
    //packid = info.packid;
    //number = info.number;
@@ -535,7 +591,7 @@ int SPackMng::appRequest(SAppInfo& info, SAppMng *mng)
    i = -1;
    //qDebug() << "mng apprequest0";
    i = rnode.appRequest(info, mng); // >=0 is ok; == 0 means for node&user,nothing changed resource number for this app
-                                   qDebug() << "mng apprequest1";
+                                    //qDebug() << "mng apprequest1";
    if (i < 0) i = ruser.appRequest(info, mng);
    if (i < 0) i = rtask.appRequest(info, mng);
 

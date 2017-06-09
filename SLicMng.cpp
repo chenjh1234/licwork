@@ -55,7 +55,8 @@ int SLicMng::unloadPackage(QString vender, QString package, QString version, QSt
 }
 #endif
 //-------------chack file:-----------------------------
-int SLicMng::checkLicFile(QString filename, QString serverPri)
+//int SLicMng::checkLicFile(QString filename, QString serverPri)
+int SLicMng::checkLicFile(QString filename)
 {
 
    int i;
@@ -71,7 +72,8 @@ int SLicMng::checkLicFile(QString filename, QString serverPri)
    infoV = licFile.vender();
 
    // venderkey verify:
-   b = lic.isVenderKeyValid(serverPri, infoV);
+  // b = lic.isVenderKeyValid(serverPri, infoV);
+   b = lic.isVenderKeyValid(infoV);
    if (!b) return LOADFILE_VENDERKEY_ERR;
 
    venderKey = infoV->get(VENDERKEY).toString();
@@ -109,7 +111,8 @@ int SLicMng::checkLicFile(QString filename, QString serverPri)
    return num;
 }
 //load file------------------------
-int SLicMng::loadFile(QString filename, QString serverPri)
+//int SLicMng::loadFile(QString filename, QString serverPri)
+int SLicMng::loadFile(QString filename)
 {
    int i, ret, num;
    LLicFile licFile;
@@ -118,7 +121,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    LEncrypt en;
    QString str, venderKey, pKey, venderSign, uuid, smid, venderName, borrow;
    bool b;
-   num = checkLicFile(filename, serverPri);
+   //num = checkLicFile(filename, serverPri);
+   num = checkLicFile(filename);
    if (num <= 0)  return num;
 
 // readfile:
@@ -130,7 +134,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
    venderName = infoV->get(VENDERNAME).toString();
    smid = infoV->get(SERVERID).toString();
 
-   lic.isVenderKeyValid(serverPri, infoV);// we do not if
+   //lic.isVenderKeyValid(serverPri, infoV);// we do not if
+   lic.isVenderKeyValid(infoV);// we do not if
    venderSign = lic.getVenderSign(); //  isVenderKeyValid make it available
    
    
@@ -193,7 +198,8 @@ int SLicMng::loadFile(QString filename, QString serverPri)
 }
 // unload file
 /// unload license  file:
-int SLicMng::unloadFile(QString filename, QString serverPri)
+//int SLicMng::unloadFile(QString filename, QString serverPri)
+int SLicMng::unloadFile(QString filename,QString proofFile)
 {
    int i, ret, num;
    LLicFile licFile;
@@ -201,7 +207,30 @@ int SLicMng::unloadFile(QString filename, QString serverPri)
    LInfo *infoV;
    LEncrypt en;
    QString str, venderKey, pKey, venderSign, uuid, smid, venderName;
-   num = checkLicFile(filename, serverPri);
+   //num = checkLicFile(filename, serverPri);
+   num = checkLicFile(filename);
+   if (num <= 0)  return num;
+
+   // readfile:
+   i = licFile.readFile(filename);
+   if (i <= 0) return LOADFILE_FILE_ERR; 
+   infoV = licFile.vender();
+   uuid = infoV->get(UUID).toString();
+   qDebug() << " uuid = " <<uuid;
+
+   ret = data->unloadPackage(uuid,proofFile);
+   return ret;
+}
+int SLicMng::removeFile(QString filename)
+{
+   int i, ret, num;
+   LLicFile licFile;
+   LLicEncrypt lic;
+   LInfo *infoV;
+   LEncrypt en;
+   QString str, venderKey, pKey, venderSign, uuid, smid, venderName;
+   //num = checkLicFile(filename, serverPri);
+   num = checkLicFile(filename);
    if (num <= 0)  return num;
 
    // readfile:
@@ -215,7 +244,12 @@ int SLicMng::unloadFile(QString filename, QString serverPri)
 }
 
 //-------borrow-----------------------
-int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
+int SLicMng::borrowReturn(QString fileProof)
+{
+    return data->borrowReturn(fileProof);
+
+}
+int SLicMng::borrow(QString filename, QString fo)
 {
  
    int i;
@@ -226,11 +260,12 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    SPackInfo *infoSP;
    LEncrypt en;
    LFileDate fd;
+//   QString sPubIn,sPubOut;// infact is serverID
 
 // open file:
    QString  venderKey, pKey,sPub,vSign,uuid,mid;
    mid = lic.getMid();
-
+ 
    fileo = fo;
    lfile = new LLicFile();
    i = lfile->readFile((char *)filename.Q2CH);
@@ -243,7 +278,8 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
  
 // serverPub files:
    infoV = lfile->vender();
-   sPub = sPubIn;
+   #if 0
+   sPub = mid;
 // is serverPub,venserPri file exist:
    //pubIn
    if (!fd.isFile(sPub))
@@ -259,7 +295,7 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
       return -1;
    }
  
-    
+    #endif
 // vendername:
    QString vName;
    QString pname,pver,packid,ptype,bmid,borrow;
@@ -297,7 +333,7 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
       }
 // register a -limit package:-----------------------------------------
      // qDebug() << "infoSpID = " << infoSP->packid<<infoSP->limit;
-      //qDebug() << "infoSp = " << infoSP->getText();
+      qDebug() << "infoSp = " << infoSP->getText();
       i = data->borrow(infoSP);
       //qDebug() << "infoSp after =  "<< infoSP->getText();
       if(i <0 ) 
@@ -319,7 +355,10 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
 #endif
 
    infoV->set(BORROW,"no"); // ban of borrow 
-   str = lic.encryptVenderKey(sPubIn, infoV, vSign);
+   //str = lic.encryptVenderKey(sPubIn, infoV, vSign);
+   vSign = infoSP->get(VENDERSIGN).toString();
+   qDebug() << " sign = " << vSign;
+   str = lic.encodeVenderKey(infoV, vSign);
    infoV->set(VENDERKEY, str);
 
    //qDebug() << "venderKey = " << VENDERKEY<<str;
@@ -331,9 +370,10 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    venderKey = str;
 // get package keys:
    // pborrow:
-   borrow = fd.getText(sPubOut);
+   //borrow = fd.getText(sPubOut);
    //qDebug() << "borrow = " << borrow;// tohex:
-   borrow = data->hex(borrow);
+   //borrow = data->hex(borrow);
+   borrow = mid;//
    infoP->set(PBORROW,borrow);
    infoP->set(BMID,mid);
    //key:
@@ -355,6 +395,26 @@ int SLicMng::borrow(QString filename, QString sPubIn,QString sPubOut,QString fo)
    #endif
    return 1;
   
+}
+int SLicMng::packDB2DB()
+{
+     int i;
+     QString str;
+     str = "packDB2DB OK!!!";
+     i = data->loadDBPackage();
+     if (i > 0) 
+     {
+         i = data->saveDB();
+         if(i <0) str ="daveDB error when packDB2DB\n";
+       
+     }
+     else  
+         str = " packDB load error!! when packDB2DB\n";
+
+     
+     cout <<str.Q2CH;
+    // plog(str);
+     return i; 
 }
 // report====================================
 // 
@@ -384,7 +444,7 @@ QStringList SLicMng::reportPackage(QString pack)
     QStringList  slist;
     SPackMng *mng;
     SPackInfo *info;
-    QString name,ty,size,str,limit,start,end;
+    QString name,ty,size,str,limit,start,end,bmid;
     int len1,len2,len3;
     len1 = 10;
     len2 = 20;
@@ -396,8 +456,10 @@ QStringList SLicMng::reportPackage(QString pack)
 
     szp = mng->size(); 
         // packID sizeInfo limitTask used Nodelimit used UserLimit used
-        str = QString("%1 %2 task(%3,%4) node(%5,%6) user(%7,%8)").arg(pack,len3).arg(szp,len1).arg(mng->taskLimit()).arg(mng->taskUsed()).arg(mng->nodeLimit()).arg(mng->nodeUsed()).arg(mng->userLimit()).arg(mng->userUsed());
+         
+        str = QString("---------- %1 %2 task(%3,%4) node(%5,%6) user(%7,%8)").arg(pack,len3).arg(szp,len1).arg(mng->taskLimit()).arg(mng->taskUsed()).arg(mng->nodeLimit()).arg(mng->nodeUsed()).arg(mng->userLimit()).arg(mng->userUsed());
         slist << str;
+      
         for (j = 0; j < szp; j++) 
         {
             info =(SPackInfo*) mng->get(j);
@@ -405,8 +467,8 @@ QStringList SLicMng::reportPackage(QString pack)
             limit = info->get(PLIMIT).toString();
             start = info->get(PSTARTDATE).toString();
             end = info->get(PENDDATE).toString();
-            limit = info->get(PLIMIT).toString();
-            str = QString("%1 %2 %3 %4 %5 ").arg(pack,len3).arg(ty,len1).arg(limit,len1).arg(start,len3).arg(end ,len3);
+            bmid = info->get(BMID).toString();
+            str = QString("%1 %2 %3 %4 %5 %6").arg(pack,len3).arg(ty,len1).arg(limit,len1).arg(start,len3).arg(end ,len3).arg(bmid ,len3);;
             slist << str;
         }
  
@@ -476,7 +538,7 @@ bool SLicMng::isUuid(QString packid, QString uuid)
    return data->isUuid(packid, uuid);
 
 }
-/// if venderSign is the same with the samevenderName in the DB (),true is the same or no vendername in DB
+/// if venderSign is the same with the venderName in the DB (),true if the same or no vendername in DB
 bool SLicMng::isVenderSign(QString venderName, QString venderSign)
 {
    return data->isVenderSign(venderName, venderSign);

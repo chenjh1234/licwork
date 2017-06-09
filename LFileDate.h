@@ -17,7 +17,7 @@
 
 #define MDS5_DEF
 #ifdef MDS5_DEF
-#include "lEncrypt.h"
+#include "LEncrypt.h"
 #endif
 
 #ifndef Q2CH
@@ -45,28 +45,41 @@ public:
     QString size(QString file);
     QString TID(QString file);// same to modify
     #ifdef MDS5_DEF
-    QString mds5(QString file);
-    QStringList cmd(QString c);
+        QString mds5(QString file);
+        QString mds5c(QString file); 
+        QString mds5cc(QString file); 
+        QStringList cmd(QString c);
     #endif
-
-
+     
+    int writeText(QString file,QString text);
+    int writeBuffer(QString file,char *buf,int len);
     QString getText(QString file);
     bool isFile(QString file);
 
-
+// date:
     QString getDateStr(int y,int m,int d);
     QString curDT();
     QString curT();
     QString curTMS();
-    QString curD();
+    QString curD(); 
+    QString DT(QDateTime t);
 
     long sEP();
     long msEP();
+    long sEP(QDateTime d);
+    long msEP(QDateTime d);
     QString sEPS();
     QString msEPS();
     QString EP2DT(long s);
+    long DT2EP(QString dt);
+    int diffDT(QString t1,QString t2);
+    int testFileCTime();
+    int testFileCTime(QString filen);
 
-    QString DT(QDateTime t);
+   
+// rand:
+    int rand10();
+    QString randText10();
 private:
     QFileInfo *_fileI;
     QString _fileN;

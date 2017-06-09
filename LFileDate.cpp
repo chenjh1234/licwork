@@ -23,6 +23,7 @@ unsigned long  LFileDate::inodeLong(QString file)
    struct stat buf;
    char *filen;
    unsigned long il; 
+   if(!QFile::exists(file)) return 0;
    filen = (char *)file.Q2CH;
    stat(filen, &buf);
    il = (unsigned long)buf.st_ino;
@@ -78,6 +79,7 @@ QString LFileDate::TID(QString file)
    struct stat buf;
    char *filen;
    QDateTime dt;
+   if(!QFile::exists(file)) return "";
 
    filen = (char *)file.Q2CH;
 
@@ -105,7 +107,7 @@ QString LFileDate::modify()
 /// modify of file
 QString LFileDate::modify(QFileInfo *fi)
 {
-    if(fi == NULL) return NULL;
+    if(fi == NULL) return "";
     QDateTime  dt;
     QString str;
     dt = fi->lastModified();
@@ -172,6 +174,36 @@ QString LFileDate::getText(QString s)
    }
    return rstr; 
 }
+int LFileDate::writeText(QString file,QString text)
+{
+   QFile f;
+ 
+   f.setFileName(file);
+   if (f.open(QIODevice::WriteOnly |QIODevice::Text )) 
+   {
+       QTextStream out(&f);     
+       out << text;
+       f.flush();  
+       f.close();
+   }
+   else
+       return 0;
+   return text.length(); 
+}
+int LFileDate::writeBuffer(QString file,char *buf,int len)
+{
+   QFile f;
+   int i;
+   i = -1;
+   f.setFileName(file);
+   if (f.open(QIODevice::WriteOnly | QIODevice::Truncate )) 
+   {
+       i = f.write(buf,len);
+       f.close();
+   }
+   else return 0;
+   return i; 
+}
 #ifdef MDS5_DEF
 QString LFileDate::mds5(QString filen)
 {
@@ -182,14 +214,15 @@ QString LFileDate::mds5(QString filen)
    QString str ,rstr;
    QByteArray ba;
    long sz;
+   //qDebug() << "modify = " << TID(filen) << modify(filen)<<filen;
     
    rstr = "";
    f.setFileName(filen);
 
    if (f.open(QIODevice::ReadOnly)) 
    {
-       sz = f.size();
-       ba = f.read(sz);// readAll will change the file modify????,so chang to read;
+       
+       ba = f.readAll();// readAll will change the file modify????,so chang to read;
        if (ba.size() >0) 
        {
            i = en.digest(ba.data(),ba.size(),ch);
@@ -197,6 +230,89 @@ QString LFileDate::mds5(QString filen)
        }
        f.close();
    }
+   //qDebug() << "modify1 = " << TID(filen) << modify(filen)<<filen;
+
+   return rstr; 
+}
+QString LFileDate::mds5cc(QString filen)
+{
+#define MAXL 50000
+   LEncrypt en;
+   int i,ir;
+   char buf[MAXL],ch[35];
+   QFile f;
+   QString str ,rstr;
+   QByteArray ba;
+   //long sz;
+   //qDebug() << "modify = " << TID(filen) << modify(filen)<<filen;
+    
+   rstr = "";
+   f.setFileName(filen);
+
+   if (f.open(QIODevice::ReadOnly)) 
+   {
+       //sz = f.size();
+       while (1)  
+       {
+           ir = f.read(buf,MAXL);
+           if (ir >0)  
+               ba.append(buf, ir); 
+           if (ir != MAXL) break;
+       }
+       //ba = f.readAll();// readAll will change the file modify????,so chang to read;
+       if (ba.size() >0) 
+       {
+           i = en.digest(ba.data(),ba.size(),ch);
+           rstr = ch;
+       }
+       f.close();
+   }
+   //qDebug() << "modify1 = " << TID(filen) << modify(filen)<<filen;
+
+   return rstr; 
+}
+QString LFileDate::mds5c(QString filen)
+{
+#define MAXL 50000
+   LEncrypt en;
+   int i,ir,iff;
+   char buf[MAXL],ch[35];
+   QFile f;
+   QString str ,rstr;
+   QByteArray ba;
+   //long sz;
+   //qDebug() << "modify = " << TID(filen) << modify(filen)<<filen;
+    
+   rstr = "";
+   f.setFileName(filen);
+   //qDebug() << "modify01 = " << TID(filen) << modify(filen)<<filen;
+
+   iff = open(filen.Q2CH,O_RDONLY);
+   if (iff >0)  
+   {
+       // qDebug() << "modify02= " << TID(filen) << modify(filen)<<filen;
+        #if 1
+       //sz = f.size();
+       while (1)  
+       {
+           ir = read(iff,buf,MAXL);
+           if (ir >0)  
+               ba.append(buf, ir); 
+           if (ir != MAXL) break;
+       }
+       // qDebug() << "modify03 = " << TID(filen) << modify(filen)<<filen;
+       //ba = f.readAll();// readAll will change the file modify????,so chang to read;
+       if (ba.size() >0) 
+       {
+           i = en.digest(ba.data(),ba.size(),ch);
+           rstr = ch;
+       }
+       #endif
+
+       close(iff);
+   }
+   //qDebug() << "modify4 = " << TID(filen) << modify(filen)<<filen;
+
    return rstr; 
 }
 QStringList LFileDate::cmd(QString cm)
@@ -251,7 +367,7 @@ QString LFileDate::curTMS()
 /// current time of hhmmsszzz
 QString LFileDate::curT()
 {   
-    return curDT( ).mid(8,6);
+    return curDT().mid(8,6);
 }
 /// counter of S since EP
 long LFileDate::sEP()
@@ -265,12 +381,20 @@ long LFileDate::msEP()
     dt = dt.currentDateTime();
     return dt.toMSecsSinceEpoch();
 }
+long LFileDate::sEP(QDateTime d)
+{
+    return msEP(d)/1000; 
+}
+long LFileDate::msEP(QDateTime d)
+{
+    return d.toMSecsSinceEpoch();  
+}
 /// counter of S since EP
 QString LFileDate::sEPS()
 {  
     long d;
     QString str;
-    d =msEP();
+    d =msEP()/1000;
     str.setNum(d);
     return str;
 }
@@ -283,12 +407,71 @@ QString LFileDate::msEPS()
     str.setNum(d);
     return str;
 }
+/// EP(long) to DT(string)
 QString LFileDate::EP2DT(long d)
 {
     QDateTime dt;
     dt.setTime_t(d);
     return DT(dt);  
 }
+/// DT(string) to EP(long)   
+long LFileDate::DT2EP(QString d)
+{
+    QDateTime dt;
+    dt = dt.fromString(d,DT_FORMAT);
+    return dt.toTime_t();  
+}
+/// seconds of (t1-t2)
+int LFileDate::diffDT(QString t1,QString t2)
+{
+    long i;
+    i = DT2EP(t1) - DT2EP(t2) ;
+    return i;
+}
+int LFileDate::testFileCTime()
+{
+    QString filen;
+    filen = "/tmp/_test_.tmp";
+    return testFileCTime(filen);
+}
+/// test if new write data file ,cdate changed delay: 0 no delay:
+int LFileDate::testFileCTime(QString filen)
+{  
+    QString str,str1,dt1,dt2;
+    int len;
+    len = 300;
+    //filen = "/tmp/_test_.tmp";
+    //filen = "/mnt/hgfs/win/_test_.tmp";
+    str1.resize(len);
+    writeText(filen,str1);
+    dt1 = TID(filen); 
+    sleep(2);
+    dt2 = TID(filen); 
+    //qDebug() << dt1 << dt2 << len;
+
+    len = diffDT(dt1,dt2);
+    //qDebug() << dt1 << dt2 << len;
+    QFile::remove(filen);
+    return len;
+}
+// rand:-----------------------------
+/// return rand of 0-10;
+int LFileDate::rand10()
+{
+    srand(time(0));
+    return rand()%11;
+}
+/// return QString of length 0-10;
+QString LFileDate::randText10()
+{
+    QString str;
+    int len;
+    len = rand10();
+    if (len == 0 ) len = 1;
+    str.resize(len);
+    return str;
+}
+
      
 #if 0
 void fileTest()
