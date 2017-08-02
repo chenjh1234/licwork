@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QMutex>
 #include <QSettings>
+#include <QDir>
 
 #include "LInfoMng.h"
 #include "LVenderMng.h"
@@ -29,12 +30,21 @@
 #define PASSWD_PROOF "0123456"
 #define DELIMIT_PROOF "%%"
 
+#define LIC_ROOT_PATH "LIC_ROOT" //  licdatadir 
+#define LIC_DB_PATH "db" //  $LIC_ROOT/db
+#define LIC_LOG_PATH "log" //  $LIC_ROOT/log
+#define LIC_FILE_PATH "file" //  $LIC_ROOT/file
+
 #define DB_PTR "dbptr"
 #define DB_REGISTER "dbname"
 
-#define APP_LOG "alog.log"
-#define ERR_LOG "elog.log"
-#define PACKAGE_LOG "plog.log"
+#define ALOG "ALOG"
+#define ELOG "PLOG"
+#define PLOG "ELOG"
+
+//#define APP_LOG "alog.log"
+//#define ERR_LOG "elog.log"
+//#define PACKAGE_LOG "plog.log"
 
 #define DB_FILE "fileDB.db"
 #define DB_FILE_PTR "fileDB.db.ptr"
@@ -53,11 +63,11 @@ public:
 // package manage:---------------------------------------------
 // interface: add remove unload: add a saveDBPackage()
     // add
-    int addPackage(SPackInfo *info);
+    int addPackage(SPackInfo *info);//return size of info in mng
     // remove
     int unloadPackage(QString uuid,QString filen);// move the pakage to packRemoved; lock in: from uncloadFile,call 
     int removePackage(QString uuid);// move the pakage to packRemoved; lock in: from uncloadFile,call 
-    int removePackage(QString packid,SPackInfo * inf);// move the pakage to packRemoved; base removed
+    int removePackage(QString packid,SPackInfo * inf);// move the pakage to packRemoved; base removed // return size of info in mng;
     int unloadPackage(QString packid,SPackInfo * inf);// set the info limit = 0;  
 
     int createProof(QString prooffile,SPackInfo * inf);// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
@@ -84,7 +94,7 @@ public:
     int borrow(SPackInfo *pack);
     int borrowReturn(QString filen);
 // app manage:--------------------------------------------
-    int addApp(SAppInfo &app);  // >=0 OK
+    int addApp(SAppInfo &app);  // >=0 OK return size of info in mng;
     int rmApp(SAppInfo &app);  
 
     int registerApp( SAppInfo & info);
@@ -95,12 +105,18 @@ public:
     QStringList appPacks();/// packages used of all registed apps.
     SAppMng * appMng(QString packid); //
 
-// HH-------------------------------------------------------
+// HB,check cycle:------------------------------------------------------
     int appHB(SAppInfo &app);
-    int checkHB();
-    int checkHB(QString pack);
+
+    int checkHB(long intvs);//return number of expired
+    int checkHB(QString pack,long intvs);
+    int checkPackExp();    // return :number of expired
+    int checkPackExp(QString packID);// return number of pack expired;
+
+    int checkAppExp(long intvS);//return number of app expired;
+    int checkAppExp(QString packID,long intvs);
 // DB------------------------------------------------
-    int saveDB();
+    int saveDB();//return bytes of filePtr
     int loadDB();
      
     // apck app:
@@ -121,7 +137,7 @@ public:
     int clear();
     QString getDBFile();
     QString getDBFileIndex();
-    // forPackOnly:
+   // forPackageOnly:
     int saveDBPackage();
     int loadDBPackage();
     QString getDBPackFile();
@@ -130,6 +146,21 @@ public:
 // util
     QString hex(QString);
     QString unHex(QString);
+// pathname:
+    QString curLogName(QString ty);// usrrent elog filename ,elog20170101.log ,month changed the log changed
+    int changeLogNames();// check if the log filename(month) changed,if changed newit:
+    // dir:
+    QString rootDir();
+    QString dbDir();
+    QString fileDir();
+    QString logDir();
+    //path:
+    QString dbName();
+    QString dbPtrName();
+    QString dbPackageName();
+    QString dbPackagePtrName();
+    bool mkDir(QString dir);// make sure the dir exist;
+
 private:
 // log :
     void plog(SPackInfo *info,QString str ="");
@@ -137,6 +168,7 @@ private:
 
     void elog(QString s);
     void elog(SAppInfo *info,QString str ="");
+
     void alog(SAppInfo *info);
 
 // statis

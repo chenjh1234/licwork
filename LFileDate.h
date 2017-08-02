@@ -58,11 +58,13 @@ public:
 
 // date:
     QString getDateStr(int y,int m,int d);
-    QString curDT();
-    QString curT();
-    QString curTMS();
-    QString curD(); 
-    QString DT(QDateTime t);
+    QString curDT();//16
+    QString curT();//8
+    QString curTMS();//8+3
+    QString curD(); //8
+    QString curM();//6
+    QString curY(); //4
+    QString DT(QDateTime t);//16
 
     long sEP();
     long msEP();

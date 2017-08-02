@@ -355,6 +355,14 @@ QString LFileDate::curD()
 {
     return curDT().left(8);
 }
+QString LFileDate::curM()
+{
+    return curDT().left(6);
+}
+QString LFileDate::curY()
+{
+    return curDT().left(4);
+}
 /// current time of hhmmsszzz
 QString LFileDate::curTMS()
 {
@@ -411,7 +419,11 @@ QString LFileDate::msEPS()
 QString LFileDate::EP2DT(long d)
 {
     QDateTime dt;
+//    dt.setTimeSpec(Qt::UTC);// important
     dt.setTime_t(d);
+//    dt.setTimeSpec(Qt::LocalTime);
+    //dt.setTime_t(d);
+    //qDebug() << "setTime_t =" << dt.toString(); 
     return DT(dt);  
 }
 /// DT(string) to EP(long)   

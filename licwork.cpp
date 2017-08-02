@@ -4,6 +4,9 @@
 #include "LLicEncrypt.h"
 #include "SLicMng.h"
 
+#define TEST_CYCLE1
+#include "SCycleThread.h"
+
 using namespace std;
 
 #define TEST_UNIT
@@ -1237,7 +1240,69 @@ U_START(packDB2DB)
     sm.reportPackage();
 
 U_END
+U_START(testCycle)
 
+
+#ifdef TEST_CYCLE
+
+qDebug() << "testCycle";
+    SCycleThread cyc;
+    cyc.start();
+    //cyc.wait(10*1000);
+    sleep(10);
+    qDebug() << "wake up --------------";
+    cyc.setDown();
+    qDebug() << "set down  --------------";
+    cyc.wait();
+     qDebug() << "wait go  --------------";
+
+    qDebug() << "size = " << cyc.rHB.ilist.size() << cyc.rDbSave.ilist.size() << cyc.rDayCheck.ilist.size() << cyc.rAppExp.ilist.size();
+
+    EQ(cyc.rHB.ilist.size(),5-1)
+    EQ(cyc.rDbSave.ilist.size(),2)
+    EQ(cyc.rDayCheck.ilist.size(),1)
+    EQ(cyc.rAppExp.ilist.size(),1)
+
+    EQ(cyc.rHB.nList[1],24) // 2S
+    EQ(cyc.rDayCheck.nList[0],0)
+    EQ(cyc.rAppExp.nList[0],0)
+    qDebug() << cyc.rHB.nList;
+    qDebug() << cyc.rDbSave.nList;
+    qDebug() << cyc.rDayCheck.nList;
+    qDebug() << cyc.rAppExp.nList;
+    #endif
+   
+U_END
+U_START(DateTime)
+    LFileDate dt;
+    QString str;
+    string ss,ss1;
+ 
+    long l;
+    l = dt.sEP();
+    ss =  dt.curDT().Q2CH;
+    ss1 = dt.EP2DT(l).Q2CH;
+    qDebug() << "currentDT = " << dt.curDT() << dt.EP2DT(l);
+    EQ(ss,ss1)
+    //QString EP2DT(long s);
+    //long DT2EP(QString dt);
+    str = dt.EP2DT(0);
+
+    ss = str.Q2CH;
+    l = dt.DT2EP(str);
+    qDebug() << "EP =" << str << l;
+    EQ(l,0);
+
+    QDateTime cd,d,dd;
+    cd = QDateTime::currentDateTime();
+    d.setTime_t(0);
+
+    dd = d.toUTC();
+    qDebug() << "t0=" << d << d.toUTC() << dd;
+
+ 
+    
+U_END
 M_START
 #if 0// whole test of 
 #if 1
@@ -1330,9 +1395,36 @@ M_START
 // end of test save load DB---------------
 #endif
 
-#endif// end of whole  test 
+#if 1
+U_TEST(DateTime)
+#endif
 
+#if 1 // test cycle:
+#ifdef TEST_CYCLE
+ U_TEST(dataClear)
+ U_TEST(LoadFiles)
+ U_TEST(licAppAdd)
+ U_TEST(CkeckAppAdd)
+ U_TEST(reportPackApp)
+ U_TEST(testCycle)
+#endif
 
+#endif
+#undef TEST_CYCLE   
+
+#endif // end of whole  test 
+
+  // test cycle:
+#ifdef TEST_CYCLE
+ U_TEST(dataClear)
+ U_TEST(LoadFiles)
+ U_TEST(licAppAdd)
+ U_TEST(CkeckAppAdd)
+ U_TEST(reportPackApp)
+ U_TEST(testCycle)
+#endif
+
+ 
   
 
 

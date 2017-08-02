@@ -1,9 +1,13 @@
 #include "SLicData.h"
 SLicData ::SLicData()
 {
-   _elog.setFile(ERR_LOG);
-   _alog.setFile(APP_LOG);
-   _plog.setFile(PACKAGE_LOG);
+   QString str;
+   str = curLogName(ELOG);
+   _elog.setFile(str);
+   str = curLogName(ALOG);
+   _alog.setFile(str);
+   str = curLogName(PLOG);
+   _plog.setFile(str);
 #if 0
    _elog<< "1234567"<<endl;
    QString s;
@@ -19,6 +23,9 @@ SLicData ::SLicData()
 SLicData::~SLicData()
 {
    qDebug() << " =======end of licData=======";
+   _elog.close();
+   _plog.close();
+   _alog.close();
 }
 // ===================pack ===========
 
@@ -156,24 +163,24 @@ int SLicData::borrow(SPackInfo *pack)
 }
 int SLicData::borrowReturn(QString filen)
 {
-    int i,ir;
-    SPackInfo *info;
-    QString packID;
-    info = NULL;
+   int i, ir;
+   SPackInfo *info;
+   QString packID;
+   info = NULL;
 
-    i = verifyProof(filen, info);
-    qDebug() << "verify return = " << i << info;
-    ir = i;
-    if (i >0) 
-    {
-        if (info != NULL) 
-        {
-            packID = info->packid;
-            ir = removePackage(packID, info); 
-        }
-        
-    }
-    return ir;
+   i = verifyProof(filen, info);
+   qDebug() << "verify return = " << i << info;
+   ir = i;
+   if (i > 0)
+   {
+      if (info != NULL)
+      {
+         packID = info->packid;
+         ir = removePackage(packID, info);
+      }
+
+   }
+   return ir;
 }
 
 // =======add package==============interface=======
@@ -211,7 +218,7 @@ int SLicData::addPackage(SPackInfo *info) // base add
    //if (i <=0 ) info->err = "addPackage err";
    info->ret = i;
    plog(info, "addPackage");
-   if (i >0)  i = saveDBPackage();
+   if (i > 0)  i = saveDBPackage();
    return i;
 
 }
@@ -232,7 +239,7 @@ int SLicData::unloadPackage(QString packid, SPackInfo *info) // base remove
    info->ret = i;
    plog(info, "unloadPackage");
    _lockPack.unlock();
-   if (i >=0)  i = saveDBPackage();
+   if (i >= 0)  i = saveDBPackage();
    return i; // index of info in mng <0 err
 }
 //-------remove packInfo * from packMng:--internal use
@@ -265,7 +272,7 @@ int SLicData::removePackage(QString packid, SPackInfo *info) // base remove
    if (i == 0) i = 1;
    info->ret = i;
    plog(info, "removePackage");
-   if (i >=0)  i = saveDBPackage();
+   if (i >= 0)  i = saveDBPackage();
    return i; // index of info in mng <0 err
 }
 //----------remove uuid---------for unload license file------------------------------
@@ -329,7 +336,7 @@ int SLicData::removePackage(QString uuid)
    }
    return ret;
 }
-int SLicData::unloadPackage(QString uuid,QString filen)
+int SLicData::unloadPackage(QString uuid, QString filen)
 {
    int i, sz, ret, ret1;
    QMap<QString, SPackInfo *> umap;
@@ -369,16 +376,15 @@ int SLicData::unloadPackage(QString uuid,QString filen)
             // plog in upper subs
             // str = "OK unloadPackage(QString uuid) packid = " + slist[i];
             //plog(str);
-             if (i == 0) filenn = filen;
-             else
-                filenn = filen + QString("%1").arg(i);
-             ir = createProof(filenn, info); 
-             //qDebug() << ir;
-             if (ir<0) 
-             {
-                 ret = i;
-                 break;
-             }
+            if (i == 0) filenn = filen;
+            else filenn = filen + QString("%1").arg(i);
+            ir = createProof(filenn, info);
+            //qDebug() << ir;
+            if (ir < 0)
+            {
+               ret = i;
+               break;
+            }
          }
       } //for
 
@@ -400,13 +406,13 @@ int SLicData::unloadPackage(QString uuid,QString filen)
       err = "ERR:  unloadPackage(QString uuid): is Err removed package number = " + QString("%1 ").arg(ret) + uuid;
       plog(err);
    }
-   
+
    return ret;
 }
 /// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
 int SLicData::createProof(QString filen, SPackInfo *inf)
 {
-   int sz, i, ret, len;
+   int  ret, len;
    QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
    QString proof, enProof;
    LEncrypt en;
@@ -427,8 +433,8 @@ int SLicData::createProof(QString filen, SPackInfo *inf)
    if (len <= 0)  return -1; // encrypt failed
    qDebug() << proof;
 //geoeast_pc1_1.0%%task%%2%%20170101%%20180101%%73947D61-D163D96C-03295769-F3BF5EB7%%73947D61-D163D96C-03295769-F3BF5EB7%%df3d81d2-2484-45d3-8bb4-79d161691cf3%%0B2C366330A53B2FE2B17FD57103BE69615166AB47FAC728B243E5991F5265C41FB8BB48BC9F76EE649E05A29871EDF75EF52F0431F7270BF2FA8446C60A5F8BEF664386890BC4BBB7F92591B63AFA73E443ABC2B223B61B9481CF9CD99DEEAC2D37391BFF3429BDC83E4C96B438FAF70DA35475C3E87581CEF1E3D8DD8CF5F8
-   //qDebug() <<  "encrypt proof len = " << proof.length() << len;
-   //printf("22222\n");
+//qDebug() <<  "encrypt proof len = " << proof.length() << len;
+//printf("22222\n");
 // encrypt OK:
 
    QFile file(filen);
@@ -444,9 +450,9 @@ int SLicData::createProof(QString filen, SPackInfo *inf)
    return ret;
 }
 /// inf:found the Package borrowOut,for borrow return;
-int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
+int SLicData::verifyProof(QString filen, SPackInfo *& retInfo)
 {
-   int sz, i, len;
+   int   i, len;
    QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
    QString proof, err;
    LEncrypt en;
@@ -490,7 +496,7 @@ int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
    SPackMng *mng;
    SPackInfo *info;
    QString  ty1,  start1, end1, sinID1, soutID1, uuid1, sign1;
- 
+
 
    i = 0;
    ret = -1;
@@ -501,13 +507,13 @@ int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
       mng = mapPack[packID];
       if (mng != NULL)
       {
-          //qDebug() << "mngSize = " << mng->size();
+         //qDebug() << "mngSize = " << mng->size();
          for (i = 0; i < mng->size(); i++)
          {
-            info = (SPackInfo *) mng->get(i);
+            info = (SPackInfo *)mng->get(i);
             if (info == NULL) break;
             //qDebug() << "limit = " << limit.toInt() << info->limit << info->isBorrowOut() << info->get(BMID).toString();
-            if (limit.toInt() == (-1 *info->limit) && info->isBorrowOut())
+            if (limit.toInt() == (-1 * info->limit) && info->isBorrowOut())
             {
                ty1 = info->get(PTYPE).toString();
                start1 = info->get(PSTARTDATE).toString();
@@ -516,12 +522,12 @@ int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
                soutID1 = info->get(SERVERID).toString();
                uuid1 = info->get(UUID).toString();
                sign1 = info->get(VENDERSIGN).toString();
-               qDebug() << "found info = " << packID << ty1<< start1<<end1<< sinID1<<soutID1<<uuid1 << sign1;
-               if (ty == ty1&& start == start1 &&end == end1 &&sinID ==soutID1 && soutID == soutID1 && uuid == uuid1 && sign == sign1) 
+               qDebug() << "found info = " << packID << ty1 << start1 << end1 << sinID1 << soutID1 << uuid1 << sign1;
+               if (ty == ty1 && start == start1 && end == end1 && sinID == soutID1 && soutID == soutID1 && uuid == uuid1 && sign == sign1)
                {
-                   ret = 1;
-                   retInfo = info;
-                   break;
+                  ret = 1;
+                  retInfo = info;
+                  break;
                }
             }
             else continue;
@@ -530,20 +536,20 @@ int SLicData::verifyProof(QString filen,SPackInfo * &retInfo)
       else err = " packMng is NULL";
    }
    else err = " no this packID = " + packID;
-   if (ret == -1)  
+   if (ret == -1)
    {
-       retInfo = NULL;
-       err = "verify proof : " + err;
-       plog(err);
+      retInfo = NULL;
+      err = "verify proof : " + err;
+      plog(err);
    }
    else
    {
-       retInfo = info;
-       plog(info,"verifyProof");
+      retInfo = info;
+      plog(info, "verifyProof");
    }
 
-   qDebug() << "verify proof err = " << err << info<<retInfo;
- 
+   qDebug() << "verify proof err = " << err << info << retInfo;
+
    return ret;
 }
 //============================================service functions===================
@@ -995,7 +1001,7 @@ int SLicData::saveDB()
 #if 1 // new one
 int SLicData::saveDB()
 {
-   int sz, i;
+
    QString fileDB;
    QStringList slist;
 
@@ -1007,7 +1013,7 @@ int SLicData::saveDB()
    QDataStream ds(&file);
    saveDBPack(ds);
    saveDBApp(ds);
- 
+
 // close
 //ds.flush();
    file.flush();
@@ -1017,12 +1023,11 @@ int SLicData::saveDB()
 }
 #endif
 
-int SLicData::saveDBPack(QDataStream &ds)
+int SLicData::saveDBPack(QDataStream& ds)
 {
    int sz, i;
-   QString fileDB;
    QStringList slist;
- 
+
 // pack:
    SPackMng *pmng;
    slist = packNames();
@@ -1036,12 +1041,11 @@ int SLicData::saveDBPack(QDataStream &ds)
    }
    return sz;
 }
-int SLicData::saveDBApp(QDataStream &ds)
+int SLicData::saveDBApp(QDataStream& ds)
 {
    int sz, i;
-   QString fileDB;
    QStringList slist;
- 
+
    SAppMng *amng;
    slist = appPacks();
    ds << slist;
@@ -1131,10 +1135,10 @@ int SLicData::saveDBMsg()
 
    fileDB = getDBFile();
    filePtr = getDBFileIndex();
-   return saveDBMsg(fileDB,filePtr);
+   return saveDBMsg(fileDB, filePtr);
 }
 #endif
-int SLicData::saveDBMsg(QString fileDB,QString filePtr)
+int SLicData::saveDBMsg(QString fileDB, QString filePtr)
 {
    int sz;
    QStringList slist;
@@ -1177,7 +1181,7 @@ int SLicData::saveDBMsg(QString fileDB,QString filePtr)
    ds << finode;
    QString randT;
    randT = _dt.randText10();
-   qDebug() <<"rndt = " << randT.length() << randT;
+   qDebug() << "rndt = " << randT.length() << randT;
    ds << randT; //make the ptr file rand length;
    fcdate = _dt.TID(filePtr);
    ds << fcdate;
@@ -1187,11 +1191,11 @@ int SLicData::saveDBMsg(QString fileDB,QString filePtr)
    ptr.close();
 // save to EN:
 // ptr Mds5 save:
-   qDebug() << "date db end0= " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
+//qDebug() << "date db end0= " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
    fmds5 = _dt.mds5(filePtr);
    QSettings st(ORG_NAME, SAPP_NAME);
    st.setValue(filePtr, fmds5);
-   qDebug() << "date db end = " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
+   //qDebug() << "date db end = " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
 
    return sz + 4;
 }
@@ -1278,22 +1282,22 @@ int SLicData::loadDBMsg()
 #define RET(x) {cout << x <<endl; return -1;}
 int SLicData::loadDBMsg()
 {
-   int sz;
+
    QString fileDB, filePtr;
    QStringList slist;
 
    fileDB = getDBFile();
    filePtr = getDBFileIndex();
-   return loadDBMsg(fileDB,filePtr);
+   return loadDBMsg(fileDB, filePtr);
 }
-int SLicData::loadDBMsg(QString fileDB,QString filePtr)
+int SLicData::loadDBMsg(QString fileDB, QString filePtr)
 {
    int sz;
- //  QString fileDB, filePtr;
+   //  QString fileDB, filePtr;
    QStringList slist;
 
- //  fileDB = getDBFile();
- //  filePtr = getDBFileIndex();
+   //  fileDB = getDBFile();
+   //  filePtr = getDBFileIndex();
 
    QFile ptr(filePtr);
 
@@ -1365,14 +1369,6 @@ int SLicData::loadDBMsg(QString fileDB,QString filePtr)
    return sz;
 }
 
-QString SLicData::getDBFile()
-{
-   return DB_FILE;
-}
-QString SLicData::getDBFileIndex()
-{
-   return DB_FILE_PTR;
-}
 #if 0 // old one
 int SLicData::loadDB()
 {
@@ -1425,7 +1421,7 @@ int SLicData::loadDB()
 #if 1 // new one
 int SLicData::loadDB()
 {
-   int sz, i;
+   int   i;
    QString fileDB;
    QStringList slist;
    if (!isDBRegisted())
@@ -1448,7 +1444,7 @@ int SLicData::loadDB()
 
 }
 #endif
-int SLicData::loadDBPack(QDataStream &ds)
+int SLicData::loadDBPack(QDataStream& ds)
 {
    int sz, i;
    QString fileDB;
@@ -1468,12 +1464,12 @@ int SLicData::loadDBPack(QDataStream &ds)
    }
    return sz;
 }
-int SLicData::loadDBApp(QDataStream &ds)
+int SLicData::loadDBApp(QDataStream& ds)
 {
    int sz, i;
    QString fileDB;
    QStringList slist;
- 
+
 // app:
    SAppMng *amng;
    ds >> slist;
@@ -1489,8 +1485,8 @@ int SLicData::loadDBApp(QDataStream &ds)
 //================packDB interface====================================
 int  SLicData::saveDBPackage()
 {
-   int sz, i;
-   QString fileDB,filePtr;
+   //int sz, i;
+   QString fileDB, filePtr;
    QStringList slist;
 
    fileDB = getDBPackFile();
@@ -1501,31 +1497,31 @@ int  SLicData::saveDBPackage()
 
    QDataStream ds(&file);
    saveDBPack(ds);
-  // saveDBApp(ds);
+   // saveDBApp(ds);
 
    file.flush();
    file.close();
    //qDebug() << " save app ok=" << _dt.TID(fileDB);
-   return saveDBMsg(fileDB,filePtr);
+   return saveDBMsg(fileDB, filePtr);
 }
 int  SLicData::loadDBPackage()
 {
 
-   #if 0 // we donot care register here,only load the package
+#if 0 // we donot care register here,only load the package
    if (!isDBRegisted())
    {
       i = registerDB();
       return i;
    }
-   #endif 
-   int sz, i;
-   QString fileDB,filePtr;
+#endif
+   int i;
+   QString fileDB, filePtr;
    QStringList slist;
 
    fileDB = getDBPackFile();
    filePtr = getDBPackFileIndex();
 
-   i = loadDBMsg(fileDB,filePtr);
+   i = loadDBMsg(fileDB, filePtr);
    if (i <= 0)  return -1;
 
    fileDB = getDBFile();
@@ -1537,15 +1533,6 @@ int  SLicData::loadDBPackage()
 // close
    file.close();
    return 1;
-}
-QString  SLicData::getDBPackFile()
-{
-     return DB_PACKFILE;
-}
-QString  SLicData::getDBPackFileIndex()
-{
-    return DB_PACKFILE_PTR;
-
 }
 //==========clear:
 /// clear db
@@ -1634,26 +1621,122 @@ int SLicData::appHB(SAppInfo& app)
    else return -1;
 
 }
-int SLicData::checkHB()
+//---------checkPackExp----------------
+int SLicData::checkPackExp(QString packid)
+{
+   int i, sz, ir, ic;
+   SPackMng *mng;
+   QString str;
+   SPackInfo *info;
+   QStringList slist;
+   mng =  mapPack[packid];
+   sz = mng->size();
+   ic = 0;
+
+   for (i = 0; i < sz; i++)
+   {
+      info = (SPackInfo *)mng->get(i);
+      if (info->getStat() == STAT_EXP)
+      {
+         str = "packid = " + packid + " is expired!!!!";
+         plog(str);
+         ir = removePackage(packid, info);
+         if (ir >= 0)
+         {
+            ic++;
+         }
+      }
+   }
+   return ic; // index of info in mng <0 err
+}
+int SLicData::checkPackExp()
 {
    int i, sz;
    QStringList packs;
    QString pack;
+   int ic, ir;
+   ic = 0;
 
    packs = packNames();
    sz = packs.size();
    for (i = 0; i < sz; i++)
    {
       pack = packs[i];
-      checkHB(pack);
+      ir = checkPackExp(pack);
+      ic = ic + ir;
    }
-   return 1;
+   return ic;
 }
-int SLicData::checkHB(QString pack)
+//---------checkAppExp----------------
+int SLicData::checkAppExp(QString packid, long intvs)
+{
+   int i, sz;
+   SAppMng *mng;
+   QString str;
+   SAppInfo *info;
+   QStringList slist;
+   mng =  mapApp[packid];
+   if (mng == NULL)  return 0;
+   sz = mng->size();
+   qDebug() << "mng SZ= " << sz;
+   int ic;
+   ic = 0;
+   for (i = 0; i < sz; i++)
+   {
+      info = (SAppInfo *)mng->get(sz - i + 1);
+      if (info != NULL) if (info->isExpired(intvs))
+         {
+            str = "Warning: app expired =" + info->packid + " " +  info->appid + " " +  info->user + " start = " +  _dt.EP2DT(info->start);
+            plog(str);
+            ic++;
+            //qDebug() << str;
+         }
+   }
+   return ic; // index of info in mng <0 err
+}
+int SLicData::checkAppExp(long intvs)
+{
+   int i, sz;
+   QStringList packs;
+   QString pack;
+   int ic, ir;
+   ic = 0;
+
+   packs = packNames();
+   sz = packs.size();
+   //qDebug() << "packs = " << sz;
+   for (i = 0; i < sz; i++)
+   {
+      pack = packs[i];
+      //qDebug() << "pack = "<<i<<  pack;
+      ir = checkAppExp(pack, intvs);
+      ic = ic + ir;
+   }
+   return ic;
+}
+//---------------------------------checkHB--------------
+int SLicData::checkHB(long intvs)
+{
+   int i, sz, ir, ic;
+   QStringList packs;
+   QString pack;
+   ic = 0;
+
+   packs = packNames();
+   sz = packs.size();
+   for (i = 0; i < sz; i++)
+   {
+      pack = packs[i];
+      ir = checkHB(pack, intvs);
+      ic = ic + ir;
+   }
+   return ic;
+}
+int SLicData::checkHB(QString pack, long intvs)
 {
 
    // packid,appid,user,number type, start
-   int i, sz, ir;
+   int i, sz, ir, ic;
    QStringList  slist;
    SAppMng *mng;
    SAppInfo *info;
@@ -1663,29 +1746,38 @@ int SLicData::checkHB(QString pack)
 
 
    mng = appMng(pack);
+   //qDebug() << " checkHB0 =" << pack << mng;
 
-   if (mng == NULL) return -1;
+   if (mng == NULL) return 0;
 
    sz = mng->size();
+   //qDebug() << " checkHB =" << pack << sz;
+   ic = 0;
 
    for (i = 0; i < sz; i++)
    {
-      info = (SAppInfo *)mng->get(i);
-      if (info->checkHB())
-      {
-         ir = rmApp(*info);
-         if (ir > 0)
+      //qDebug() << "checkHB0 =" << i << pack;
+      info = (SAppInfo *)mng->get(sz - i - 1);
+      //qDebug() << "checkHB =" << i << pack << info->appid;
+      if (info != NULL)  if (info->checkHB(intvs))
          {
-            qDebug() << "check hearBeat rmApp OK appid = " << info->packid << info->appid;
+            ic++;
+            appid = info->appid;
+            user = info->user;
+            ir = rmApp(*info);
+            if (ir > 0)
+            {
+               qDebug() << "check hearBeat rmApp OK appid = " << pack << appid << user;
+            }
+            else
+            {
+               qDebug() << "check hearBeat rmApp Err appid = " << pack << appid << user;
+            }
          }
-         else
-         {
-            qDebug() << "check hearBeat rmApp Err appid = " << info->packid << info->appid;
-         }
-      }
+      //qDebug() << "checkHB1 =" << i << pack;
    }
 
-   return 1;
+   return ic;
 }
 //=============================util====================
 QString SLicData::hex(QString s)
@@ -1707,4 +1799,115 @@ QString SLicData::unHex(QString s)
    ss2 = en.hex2Bin(ss1);
    str = ss2.c_str();
    return str;
+}
+//============================other====================
+QString SLicData::curLogName(QString s)
+{
+   QString str, str1;
+   str1 = _dt.curM();
+   str = s + str1 + ".log";
+   str = logDir() + "/" + str;
+   return str;
+}
+
+int  SLicData::changeLogNames()
+{
+   QString str;
+   str = curLogName(ELOG);
+   if (str != _elog.filename())
+   {
+      qDebug() << "logname changed!!!!!!!---------------------";
+      _elog.close();
+      _elog.setFile(str);
+
+      str = curLogName(PLOG);
+      _plog.close();
+      _plog.setFile(str);
+
+      str = curLogName(ALOG);
+      _alog.close();
+      _alog.setFile(str);
+      plog("logname changed------------------");
+   }
+   else return 0;
+   return 1;
+}
+
+QString SLicData::rootDir()
+{
+   QString s;
+   s = getenv(LIC_ROOT_PATH);
+   if (s == "")  s = ".";
+   return s;
+}
+QString SLicData::dbDir()
+{
+   QString s;
+   s = rootDir() + "/" + LIC_DB_PATH;
+   mkDir(s);
+   return s;
+}
+QString SLicData::fileDir()
+{
+   QString s;
+   s = rootDir() + "/" + LIC_FILE_PATH;
+   mkDir(s);
+   return s;
+}
+QString SLicData::logDir()
+{
+   QString s;
+   s = rootDir() + "/" + LIC_LOG_PATH;
+   mkDir(s);
+   return s;
+}
+bool SLicData::mkDir(QString path)
+{
+   QDir d;
+   return d.mkpath(path);
+}
+//
+QString SLicData::dbName()
+{
+   QString s;
+   s = dbDir() + "/" + DB_FILE;
+   return s;
+   
+}
+QString SLicData::dbPtrName()
+{
+   QString s;
+   s = dbDir() + "/" + DB_FILE_PTR;
+   return s;
+}
+QString SLicData::dbPackageName()
+{
+   QString s;
+   s = dbDir() + "/" + DB_PACKFILE;
+   return s;
+}
+QString SLicData::dbPackagePtrName()
+{
+   QString s;
+   s = dbDir() + "/" + DB_PACKFILE_PTR;
+   return s;
+}
+
+QString SLicData::getDBFile()
+{
+   return dbName();
+}
+QString SLicData::getDBFileIndex()
+{
+   return dbPtrName();
+}
+
+QString  SLicData::getDBPackFile()
+{
+   return dbPackageName();
+}
+QString  SLicData::getDBPackFileIndex()
+{
+   return dbPackagePtrName();
+
 }

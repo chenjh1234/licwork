@@ -19,21 +19,27 @@ void SAppInfo::init()
     ret = 1;
 
 }
-
+bool SAppInfo::isExpired(long intvs)
+{
+    LFileDate fd;
+    long t;
+    t = fd.sEP();
+    return  (t - start >= intvs);
+}
 
 int SAppInfo::appHB()
 {
     hbstat = fd.sEP();
     return hbstat;
 }
-bool SAppInfo::checkHB()
+bool SAppInfo::checkHB(long intvs)
 {
     if(hbstat ==0)
     {
         hbstat = fd.sEP();
     }
 
-    if (fd.sEP() - hbstat > CHECK_HB ) return true;
+    if (fd.sEP() - hbstat >= intvs ) return true;
     else return false;
 }
 int SAppInfo::encode(QDataStream& ds)

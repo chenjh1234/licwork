@@ -45,9 +45,10 @@ public:
     SAppInfo();
     ~SAppInfo();
     int appHB();
-    bool checkHB();
+    bool checkHB(long intvs);
     int encode(QDataStream& ds);
     int decode(QDataStream& ds);
+    bool isExpired(long intvs);
     QString packid;// vender+package+version
     QString appid;// ip+pid;
     QString user;// ip+pid;

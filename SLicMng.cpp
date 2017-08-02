@@ -8,7 +8,8 @@ SLicMng::SLicMng()
 }
 SLicMng:: ~SLicMng()
 {
-    qDebug() << " end of licMng=======";
+
+    //qDebug() << " end of licMng=======";
 }
 void SLicMng::init()
 {

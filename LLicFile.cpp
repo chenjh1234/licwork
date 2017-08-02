@@ -63,6 +63,24 @@ int LLicFile::readFile(char *filen)
    }
    return ret;
 }
+int LLicFile::readStr(QString text)
+{    
+   int ret;
+   clear();
+ 
+   if (!text.isEmpty())
+   {
+      QTextStream in(&text);
+      ret = readStream(&in);
+   }
+   else
+   {
+      qDebug() << " Input text is NULL =";
+      ret =  -1;
+   }
+   return ret;
+
+}
 ///write the licFile ,acocording to th venderMng and packagemng
 int LLicFile::writeFile(char *filen)
 {

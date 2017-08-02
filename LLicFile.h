@@ -35,6 +35,7 @@ public:
     ~LLicFile();
     int readFile(char *file);
     int readFile(QString str);
+    int readStr(QString text);
     //int read(char *file);
     int writeFile(char *file);
     int writeFile(QString str);
