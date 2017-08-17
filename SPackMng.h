@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QMutex>
 #include "LInfoMng.h"
+#include "LVenderDef.h"
 #include "SPackInfo.h"
 #include "SAppMng.h"
 /// repack the package;

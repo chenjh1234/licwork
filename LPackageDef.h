@@ -5,7 +5,7 @@
 #define PVERSION "version"
 #define PTYPE "type"
 #define PLIMIT "limit"
-#define PBORROW "pborrow"// if not NULL is the server pubkey
+#define PBORROW "pborrow"// =no:normal,bLic:uuid of borrow Out,bOut:(-limit,uuuid = "", uuid of the bLic)
 #define PSTARTDATE "startdate"
 #define PENDDATE "enddate"
 #define PKEY "key"

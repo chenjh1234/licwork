@@ -378,6 +378,18 @@ U_START(fileapi)
     qDebug() << "inodeDec= "  << f.inodeDec("fileDB.db");
     qDebug() << "mds5= "  << f.mds5("fileDB.db");
 
+    LLicEncrypt lic;
+ lic.passwdToday();
+ lic.passwdToday("123");
+ qDebug() << " ==" << lic.isPasswdToday("624083");
+ qDebug() << " ==" << lic.isPasswdToday("596680","123");
+ //QString str;
+ int i;
+ for (i = 0; i< 10; i++) 
+ {
+     str=QString("%1").arg(1000*i);
+     lic.passwdToday(str); 
+ }
 
 U_END
 U_START(SLicMngLoadFile)
@@ -406,16 +418,17 @@ U_START(SLicMngLoadFile)
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
     LT(i ,0);
 // unload file
-    i = sm.unloadFile(file,"fileu");
+    str = "fileu";
+    i = sm.unloadFile(file,str);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
     EQ(i ,2);
-    EQ(sm.data->packSize(),0)
-    EQ(sm.data->removedSize(),2)
+    EQ(sm.data->packMng(key)->taskLimit(),0)
+    //EQ(sm.data->removedSize(),2)
 
     //   load file after remove:
     i = sm.loadFile(file);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
-    GT(i ,0);
+    LT(i ,0);
 
 U_END
 U_START(SLicMngApp)
@@ -441,8 +454,12 @@ U_START(SLicMngApp)
     i = sm.loginApp(info);
     GT(i,0)
     QString packid1,packid2,appid1;
-    packid1 = sm.data->packNames()[0];
+    qDebug() << "packNames = "<< sm.data->packNames();
+
+    packid1 = "geoeast_pc1_1.0";
     packid2 = sm.data->packNames()[1];
+    qDebug() << packid1 << packid2 ;
+
     appid1 =  ((SAppInfo *)(sm.data->appMng(packid1)->get(0)))->appid;
 
     key = packid1;
@@ -450,10 +467,10 @@ U_START(SLicMngApp)
     qDebug() <<"sm.data->mapApp.keys()"<< sm.data->appPacks() << key;
     qDebug() << "sm.data->mapApp[key] "<< sm.data->appMng(packid1);//==0??
 
-    EQ(sm.data->packSize(),2)
+    EQ(sm.data->packSize(),4)
     EQ(sm.data->appSize(),1)
-    EQ(sm.data->packMng(packid1)->nodeSize(),0)
-    EQ(sm.data->packMng(packid1)->userSize(),0)
+    EQ(sm.data->packMng(packid1)->nodeSize(),1)
+    EQ(sm.data->packMng(packid1)->userSize(),1)
     EQ(sm.data->packMng(packid1)->taskSize(),1)
     //QString str;
     pf = (SAppInfo *)(sm.data->appMng(packid1)->get(0));
@@ -472,8 +489,11 @@ U_START(licLoadFiles)
     file1 = "./test/test_lic_node.lic";
     file2 = "./test/test_lic_user.lic";
  // load file:
+    LFileDate fd;
+    str = fd.getText(file);
 
-    i = sm.loadFile(file);
+    //i = sm.loadFile(file);
+    i = sm.loadFileStr(str);
     qDebug() << "ret = "<< i << sm.mapLoadFile[i];
     GT(i ,0);
     i = sm.loadFile(file1);
@@ -909,7 +929,7 @@ U_START(borrowOut)
     QString key;
     key = "geoeast_pc1_1.0";
 
-    i = sm.borrow(file,file1);
+    i = sm.borrowFile(file,file1);
     GT(i,0);
     str= lice.getMid();
     lic.readFile(file1);
@@ -918,12 +938,7 @@ U_START(borrowOut)
     str1 = infoP->get(PBORROW).toString();
     //str1 = sm.data->unHex(str1);
 
-    EQ(str,str1);
-    qDebug() << "len" << str.length() << str1.length();
-    qDebug() << "||" << str<< "||";
-    qDebug() << "||" << str1<< "||";
-
- 
+     
     qDebug()  << "key = " <<key;
    // PR("=======after borrow out====================================================");
     qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
@@ -937,26 +952,7 @@ U_START(borrowOut)
     //EQ(sm.data->packMng(key)->nodeUsed(),0)
     EQ(sm.data->packMng(key)->userLimit(),5)
     //EQ(sm.data->packMng(key)->userUsed(),0)
-    i=sm.loadFile(file1);
-    LT(i,0);
-    #if 0
-    i=sm.loadFile(file2);
-    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
-    GT(i,0);
-    #if 1
-    PR("=======after borrow out and load borrow In====================================================");
-    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
-    EQ(sm.data->packMng(key)->taskSize(),1+1+1)
-    EQ(sm.data->packMng(key)->userSize(),1)
-    EQ(sm.data->packMng(key)->nodeSize(),1)
-
-    EQ(sm.data->packMng(key)->taskLimit(),10-2+2)
-    //EQ(sm.data->packMng(key)->taskUsed(),0)
-    EQ(sm.data->packMng(key)->nodeLimit(),5)
-    //EQ(sm.data->packMng(key)->nodeUsed(),0)
-    EQ(sm.data->packMng(key)->userLimit(),5)
-    #endif 
-     #endif
+     
     QStringList slist;
     slist = sm.reportPackage();
     for (i = 0; i < slist.size(); i++) 
@@ -987,8 +983,42 @@ U_START(borrowIn)
     #if 1
     //PR("=======after borrow out and load borrow In====================================================");
     qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
-    EQ(sm.data->packMng(key)->taskSize(),1)  
-    EQ(sm.data->packMng(key)->taskLimit(),2)
+    EQ(sm.data->packMng(key)->taskSize(),3)  
+    EQ(sm.data->packMng(key)->taskLimit(),10)
+    #endif
+    QStringList slist;
+    slist = sm.reportPackage();
+    for (i = 0; i < slist.size(); i++) 
+    {
+        qDebug() << i << slist[i];
+    }
+U_END
+U_START(borrowInNoClear)
+    SLicMng sm;
+    LFileDate fd;
+    LLicFile lic;
+    LLicEncrypt lice;
+    LInfo * infoV,*infoP;
+    int i;
+    QString file,file1,file2,str,str1;
+    file = "./test/test_borrowIn.lic";
+    file1 = "./test/test_borrowOut.lic";
+     
+ // load file:
+
+    QString key;
+    key = "geoeast_pc1_1.0";
+   // sm.setCheckUUID(false);
+    str= fd.getText(file1);
+    i=sm.loadFileStr(str);
+   // sm.setCheckUUID(true);
+    qDebug() << "ret = "<< i << sm.mapLoadFile[i];
+    GT(i,0);
+    #if 1
+    //PR("=======after borrow out and load borrow In====================================================");
+    qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
+    EQ(sm.data->packMng(key)->taskSize(),3)  
+    EQ(sm.data->packMng(key)->taskLimit(),10)
     #endif
     QStringList slist;
     slist = sm.reportPackage();
@@ -1095,13 +1125,14 @@ U_END
 U_START(unloadFile)
     SLicMng sm;
     int i;
-    QString key,file;
+    QString key,file,str;
     file = "test/test_lic_task2.lic";
 
     qDebug()  << "packges = " << sm.data->packNames();
     key = "geoeast_pc1_1.0";
     qDebug()  << "key = " <<key;
-    i = sm.unloadFile(file,"fileu1");
+    str  = "fileu1";
+    i = sm.unloadFile(file,str);
     GT(i,0);
     
     qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
@@ -1136,22 +1167,31 @@ U_START(unloadFile)
 U_END
 U_START(proof)
     SLicMng sm;
+    LFileDate fd;
     int i;
-    QString key,file,file1;
+    QString key,file,file1,str,fileStr;
     file = "test/test_borrowOut.lic";
-    file1 = "unload_uuid";
+    file1 = "test/test_borrowOut.lic_proof";
 
     qDebug()  << "packges = " << sm.data->packNames();
     key = "geoeast_pc1_1.0";
     qDebug()  << "key = " <<key;
-    i = sm.unloadFile(file,file1);
+    fileStr = fd.getText(file);
+   
+    //i = sm.unloadFile(file,str);
+    i = sm.unloadFileStr(fileStr,str);
+    qDebug() << "i= " << i;
+    fd.writeText(file1,str);
+    str = sm.data->proofInfo(str);
+    qDebug()<< str.Q2CH;
     GT(i,0);
 
     qDebug() << "size of task,user,node = " << sm.data->packMng(key)->taskSize() << sm.data->packMng(key)->userSize()  <<sm.data->packMng(key)->nodeSize() ;
-    EQ(sm.data->packMng(key)->taskSize(),1)
-    EQ(sm.data->packMng(key)->userSize(),0)
-    EQ(sm.data->packMng(key)->nodeSize(),0)
-    EQ(sm.data->packMng(key)->taskLimit(),0)
+    qDebug() << "stask limit = " << sm.data->packMng(key)->taskLimit();
+    EQ(sm.data->packMng(key)->taskSize(),3)
+    EQ(sm.data->packMng(key)->userSize(),1)
+    EQ(sm.data->packMng(key)->nodeSize(),1)
+    EQ(sm.data->packMng(key)->taskLimit(),8)
 
     
 
@@ -1161,22 +1201,25 @@ U_END
 U_START(verifyProof)
     SLicMng sm;
     int i;
-    QString key,file,file1;
+    QString key,file,file1,str;
+    LFileDate fd;
     //QStringList slist;
     file = "test/test_borrowOut.lic";
-    file1 = "unload_uuid";
+    file1 = "test/test_borrowOut.lic_proof";
     key = "geoeast_pc1_1.0";
 
-    
+    str= fd.getText(file1);
+   
+    qDebug()<< sm.data->proofInfo(str).Q2CH;
 
-    i = sm.borrowReturn(file1);
+    i = sm.borrowReturn(str);
     qDebug() << "borrow return = " << i;
     GT(i,0);
  
     QStringList slist;
     slist = sm.reportPackage();
-    EQ(slist.size(),10);
-    EQ(sm.data->packMng(key)->taskSize(),1);
+    EQ(slist.size(),7);
+    EQ(sm.data->packMng(key)->taskSize(),2);
     EQ(sm.data->packMng(key)->taskLimit(),10);// remove the borrowOut;
 
     qDebug() << "after borrow return size =" << slist.size();
@@ -1303,6 +1346,98 @@ U_START(DateTime)
  
     
 U_END
+#define FILES \
+    QString file,file1,file2,file3,str,pfile,borrowIn,borrowOut,fileUser10; \
+    file = "../licwork/test/test_lic_task2.lic"; \
+    borrowIn = "../licwork/test/test_borrowInUser.lic";\
+    borrowOut = "../licwork/test/test_borrowOutUser.lic";\
+    pfile = "../licwork/test/test_borrowOutUser.lic.proof";\
+    file1 = "../licwork/test/test_lic_node.lic";\
+    file2 = "../licwork/test/test_lic_user.lic";\
+    fileUser10 = "../licwork/test/test_lic_user10.lic";
+#define REPORT \
+    SL = sm.reportPackage(); \
+    qDebug() << SL.size();\
+    for(i = 0;i < SL.size();i++)  \
+        qDebug() << i << SL[i];
+
+U_START(dev)
+
+     
+    FILES
+    SLicMng sm;
+    LFileDate fd;
+    QStringList SL;
+    int i;
+// file1
+    PR("===load file==================");
+    str=fd.getText(file);
+    i=sm.loadFileStr(str);
+    GT(i,0)
+//file2
+     PR("===load file user10================");
+    str=fd.getText(fileUser10);
+    i=sm.loadFileStr(str);
+    
+    GT(i,0)
+    REPORT
+        EQ(SL.size(),3)
+// borrow:
+     PR("===borrow=====================");
+    QString t1,t2;
+    t1 = fd.getText(borrowIn);
+     i = sm.borrowFileStr(t1,t2); 
+     GT(i,0)
+     
+     fd.writeText(borrowOut,t2);
+     REPORT
+         EQ(SL.size(),4)
+     
+
+// load
+    PR("=load borrow=====================");
+     str=fd.getText(borrowOut);
+      //qDebug() << str;
+      //sm.setCheckUUID(false);
+     i=sm.loadFileStr(str);
+     //sm.setCheckUUID(true);
+    GT(i,0)
+    
+
+    REPORT;
+        EQ(SL.size(),5)
+//unload:
+        QString proof;
+    PR("=unload borrow=====================");
+
+    i=sm.unloadFileStr(str,proof);
+     GT(i,0)
+     
+     REPORT
+     EQ(SL.size(),5)
+
+   PR("=return borrow=====================");
+
+     i=sm.borrowReturn(proof);
+     GT(i,0)
+     
+     qDebug() << "sz=" << SL.size();
+     REPORT
+     EQ(SL.size(),4)
+      qDebug() << "sz=" << SL.size();
+   PR("=unload package=====================");
+
+     proof =sm.unloadPackage("geoeast","pc11","1.0","2");
+     EQ(proof.length(),0); //  unloaded package
+
+     proof =sm.unloadPackage("geoeast","pc11","1.0","10");
+     GT(proof.length(),0); //  unloaded package
+
+     REPORT
+     EQ(SL.size(),4)
+                                
+ U_END
+
 M_START
 #if 0// whole test of 
 #if 1
@@ -1318,9 +1453,12 @@ M_START
     U_TEST(testUUID)
     U_TEST(testCREATEKEY)
     U_TEST(SLicMngLoadFile)
+    U_TEST(dataClear)
+    U_TEST(LoadFiles)
     U_TEST(SLicMngApp)
     U_TEST(testLOG)
-    //U_TEST(licLoadFiles)
+    U_TEST(dataClear)
+    U_TEST(licLoadFiles)
 // end of base test:
 #endif
 #if 1
@@ -1336,6 +1474,7 @@ M_START
     U_TEST(licAppUserAddRemove)
 // end of test loadfiles app login,app logout;
 #endif 
+
 #if 1
 // test save and load DB:--------------
      U_TEST(dataClear)
@@ -1364,22 +1503,20 @@ M_START
      U_TEST(checkLoadFiles)
      U_TEST(unloadFile)
 #endif  
-#if 1 // borrowOut ,borrowIn
-     U_TEST(dataClear)
-     U_TEST(LoadFiles)
-     U_TEST(checkLoadFiles)
-     U_TEST(borrowOut)
-     U_TEST(dataClear)
-     U_TEST(borrowIn)
-#endif
 #if 1 //  borrowIn,unload->proof,and borrowReturn with proof file = unload_uuid;
-     U_TEST(dataClear)
-     U_TEST(borrowIn)// load a borrow license file: test/test_borrowOut.lic: geoeast_pc1_1.0 task 2;
-     U_TEST(proof)// unloadfile and get proof file :unload_uuid;
      U_TEST(dataClear)
      U_TEST(LoadFiles)//   geoeast_node_1.0 :size = 3:task10,node5,user5
      U_TEST(borrowOut)//   geoeast_node_1.0 :size = 4:task10,node5,user5,task -2
+     U_TEST(borrowIn)// load a borrow license file: test/test_borrowOut.lic: geoeast_pc1_1.0 task 2;
+     U_TEST(proof)// unloadfile and get proof file :unload_uuid;
      U_TEST(verifyProof)// boorrow return:unload_uuid;geoeast_node_1.0 :size = 3:task10,node5,user5
+#endif
+
+#if 1// borrow no clear
+    U_TEST(dataClear)
+    U_TEST(LoadFiles)
+    U_TEST(borrowOut)
+    U_TEST(borrowInNoClear)// load a borrow license file: test/test_borrowOut.lic: geoeast_pc1_1.0 task 2;
 #endif
 #if 1
 // test  PackDBsave and load packDB2DB utility--------------
@@ -1394,12 +1531,8 @@ M_START
 
 // end of test save load DB---------------
 #endif
-
-#if 1
-U_TEST(DateTime)
-#endif
-
-#if 1 // test cycle:
+ 
+#if 0 // test cycle:
 #ifdef TEST_CYCLE
  U_TEST(dataClear)
  U_TEST(LoadFiles)
@@ -1410,22 +1543,16 @@ U_TEST(DateTime)
 #endif
 
 #endif
+
+
 #undef TEST_CYCLE   
+
 
 #endif // end of whole  test 
 
-  // test cycle:
-#ifdef TEST_CYCLE
- U_TEST(dataClear)
- U_TEST(LoadFiles)
- U_TEST(licAppAdd)
- U_TEST(CkeckAppAdd)
- U_TEST(reportPackApp)
- U_TEST(testCycle)
-#endif
 
- 
-  
+U_TEST(dataClear)
+U_TEST(dev)
 
 
 M_END

@@ -39,8 +39,8 @@
 #define DB_REGISTER "dbname"
 
 #define ALOG "ALOG"
-#define ELOG "PLOG"
-#define PLOG "ELOG"
+#define ELOG "ELOG"
+#define PLOG "PLOG"
 
 //#define APP_LOG "alog.log"
 //#define ERR_LOG "elog.log"
@@ -65,13 +65,21 @@ public:
     // add
     int addPackage(SPackInfo *info);//return size of info in mng
     // remove
-    int unloadPackage(QString uuid,QString filen);// move the pakage to packRemoved; lock in: from uncloadFile,call 
+    int unloadPackage(QString uuid,QString &proof);// move the pakage to packRemoved; lock in: from uncloadFile,call 
     int removePackage(QString uuid);// move the pakage to packRemoved; lock in: from uncloadFile,call 
     int removePackage(QString packid,SPackInfo * inf);// move the pakage to packRemoved; base removed // return size of info in mng;
-    int unloadPackage(QString packid,SPackInfo * inf);// set the info limit = 0;  
+    int unloadPackage(QString packid,SPackInfo * inf);// set the info limit = 0; 
+    QString unloadPackage(SPackInfo &inf);
 
     int createProof(QString prooffile,SPackInfo * inf);// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
     int verifyProof(QString filen,SPackInfo * &info);// inf:found the Package borrowOut,for borrow return;
+
+    // proof for borrowreturn  is a number of string,sperated by \n(the same uuid):each str is encrypted packageInfo and hex encoded.
+    // proof for create is a string,encrypted packageInfo and hex encoded.
+
+    int createProofStr(QString &proof ,SPackInfo * inf);// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
+    int verifyProofStr(QString &proof,SPackInfo * &info);// inf:found the Package borrowOut,for borrow return;
+     
 
     // test used
     int packSize(); /// number of packages registerd;
@@ -90,9 +98,10 @@ private:
     QString encodeAppId(QString ip,QString pid);
     QMap <QString ,SPackInfo *> findPackageInfo(QString msg, QString value);
 public:
-    // borrow:
+// borrow:
     int borrow(SPackInfo *pack);
-    int borrowReturn(QString filen);
+    int borrowReturn(QString proofs);
+    QString  proofInfo(QString proofs);
 // app manage:--------------------------------------------
     int addApp(SAppInfo &app);  // >=0 OK return size of info in mng;
     int rmApp(SAppInfo &app);  
@@ -161,7 +170,7 @@ public:
     QString dbPackagePtrName();
     bool mkDir(QString dir);// make sure the dir exist;
 
-private:
+
 // log :
     void plog(SPackInfo *info,QString str ="");
     void plog(QString s);
@@ -171,6 +180,9 @@ private:
 
     void alog(SAppInfo *info);
 
+    void setCheckUUID(bool b);
+    bool isCheckUUID();
+private:
 // statis
     DBsecond stApp,stAppErr;
     bool isPackidInApp(QString packid); 
@@ -188,6 +200,7 @@ private:
     SPackMng borrowIn,borrowOut;
 //
     QMap<QString,SAppMng *> mapApp;
+     bool _checkUUID;
 
 
 };

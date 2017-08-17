@@ -145,7 +145,10 @@ int  PResource::appRequest(SAppInfo& info, SAppMng *mng)
    info.rtype = ty;
 // return message:
    info.set(APP_VENDERSIGN, pinfo->get(VENDERSIGN));
-   info.set(APP_PBORROW, pinfo->get(PBORROW));
+   if (pinfo->get(PBORROW).toString().length() > 0)  
+       info.set(APP_PBORROW, pinfo->get(PBORROW)); 
+   else
+       info.set(APP_PBORROW, pinfo->get(SERVERID));
    info.set(PTYPE, pinfo->get(PTYPE));
 
    qDebug() <<  "appRequest ty = " << ty;
@@ -200,11 +203,12 @@ int  PResource::appRelease(SAppInfo& info, SAppMng *mng)
    //if (size() <= 0)  return -1;  // mybe package removed all
    // if (limit - used <= 0) return -1; // we not care
 
-   int i,  number;
+   int i,  number,idd;
    //SPackInfo *pinfo;
    QString packid, appid, ty, ip, user, err;
 
    i = -1;
+   idd = -1;
    number = info.number; // release number
 
    //  sz = pList.size();// packages
@@ -231,6 +235,7 @@ int  PResource::appRelease(SAppInfo& info, SAppMng *mng)
    if (ty == PTYPE_TASK)
    {
       used = used - number;
+      idd = number;
    }
    //node:
    else if (ty == PTYPE_NODE)
@@ -241,6 +246,7 @@ int  PResource::appRelease(SAppInfo& info, SAppMng *mng)
       if (i < 0) // no package runing in that node;
       {
          used = used - number;
+         idd = number;
       }
       else i = 0;
       //rnode.remove(info);
@@ -254,11 +260,12 @@ int  PResource::appRelease(SAppInfo& info, SAppMng *mng)
       if (i < 0) // for user no package runing in my node;
       {
          used = used - number;
+         idd = number;
       }
       else i = 0;
    }
 //   }
-
+   //return idd; // not release mybe rigth
    return number;
 }
 int  PResource::encode(QDataStream& ds)
@@ -438,6 +445,12 @@ int SPackMng::unloadInfo(SPackInfo *info)
          }
       }
 
+   }
+   else if (limit == 0) 
+   {
+       str = "SPackMng::unloadInfo: Can not unload a  unloaded license Error";
+       info->err = str;
+       ret = -1;
    }
    else
    {

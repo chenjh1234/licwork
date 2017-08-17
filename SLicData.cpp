@@ -8,6 +8,8 @@ SLicData ::SLicData()
    _alog.setFile(str);
    str = curLogName(PLOG);
    _plog.setFile(str);
+   
+   setCheckUUID(true);
 #if 0
    _elog<< "1234567"<<endl;
    QString s;
@@ -101,7 +103,10 @@ int SLicData::appPackSize()
 //=================================borrow=====================
 int SLicData::borrow(SPackInfo *pack)
 {
+   
    QString str, packid, dt;
+   LEncrypt en;
+   string sstr;
    // found package for borrow
    /// packid,borrow,type,uuid,limit,date,left
    int i, sz, left;
@@ -140,10 +145,20 @@ int SLicData::borrow(SPackInfo *pack)
          // vendersign:
          str = info->get(VENDERSIGN).toString();
          pack->set(VENDERSIGN, str);
-         // pborrow:
-         str = info->get(PBORROW).toString();
+         //pborrow: uuid for pack  boutLic:     
+         sstr = en.uuid();
+         str= sstr.c_str();
+         pack->set(PBORROW,str);// new uuid for licOut;
+         qDebug() << "PBORROW =" << str;
+         // uuid: new
+         sstr = en.uuid();
+         str= sstr.c_str();
+         pack->set(UUID, str);// my uuid
+         qDebug() << "UUID =" << str;
+         #if 0 //  to set mother pack info? no
+          
+         #endif
 
-         pack->set(PBORROW, str);
          // add a -limit pacakge:
          left = addPackage(pack);
          if (left < 0)
@@ -161,25 +176,43 @@ int SLicData::borrow(SPackInfo *pack)
    plog(pack, "borrow");
    return -2;
 }
-int SLicData::borrowReturn(QString filen)
+int SLicData::borrowReturn(QString text) // is a number of stringProof seprated by "\n"
 {
-   int i, ir;
+   int i, ir, ii, irr;
    SPackInfo *info;
-   QString packID;
+   QString packID, pstr, str;
    info = NULL;
+   ir = -1;
 
-   i = verifyProof(filen, info);
-   qDebug() << "verify return = " << i << info;
-   ir = i;
-   if (i > 0)
+   string inStr, outStr;
+   QStringList sList;
+   sList = text.split("\n");
+   //qDebug() << "pstr =|"<< sList << "|";
+   for (ii = 0; ii < sList.size(); ii++)
    {
-      if (info != NULL)
-      {
-         packID = info->packid;
-         ir = removePackage(packID, info);
-      }
+      pstr = sList[ii];
+      if (pstr.length() > 1)  i = verifyProofStr(pstr, info);
+      else continue;
 
+      qDebug() << "verify return = " << i << info;
+      ir = i;
+      if (i > 0)
+      {
+         if (info != NULL)
+         {
+            packID = info->packid;
+            irr = removePackage(packID, info);
+            if (irr < 0)  str = "borrowReturn Err packid = " + packID;
+            else
+            {
+               str = "borrowReturn OK packid = " + packID;
+               ir++;
+            }
+            plog(str);
+         }
+      }
    }
+   if (ir >= 0)  ir++;
    return ir;
 }
 
@@ -195,7 +228,7 @@ int SLicData::addPackage(SPackInfo *info) // base add
    // lock;
    _lockPack.lock();
    packid = info->packid;
-   //qDebug() << "addPackage ,nameid = " << nameid;
+   qDebug() << "addPackage ,nameid = ";
    if (isPackidInPack(packid))
    {
       qDebug() << "addPackage yes= " << packid;
@@ -242,6 +275,76 @@ int SLicData::unloadPackage(QString packid, SPackInfo *info) // base remove
    if (i >= 0)  i = saveDBPackage();
    return i; // index of info in mng <0 err
 }
+QString  SLicData::unloadPackage(SPackInfo &info)
+{
+    #if 1
+   QString vender,pack,version,ty,number,uuid,err,rs,proof,packid;
+   SPackInfo *pinfo;
+   SPackMng *mng;
+   QList<int> ilist;
+   int i,idx,ir;
+   err = "err";
+
+  
+   vender = info.get(VENDERNAME).toString();
+   pack = info.get(PACKAGENAME).toString();
+   version = info.get(PVERSION).toString();
+   ty = info.get(PTYPE).toString();
+   number = info.get(PLIMIT).toString();
+   uuid = info.get(UUID).toString();
+
+  
+   packid = encodePackageId(vender, pack, version);
+   mng  =  mapPack[packid];
+   if (mng) 
+   {
+       if (uuid.length() !=0 && number.length() !=0 && ty.length() !=0)  
+           ilist = mng->findAll(PLIMIT, number,PTYPE, ty,UUID,uuid); 
+       else if (uuid.length() ==0 && number.length() !=0 && ty.length() !=0)  
+           ilist = mng->findAll(PLIMIT, number,PTYPE, ty); 
+       else if (uuid.length() ==0 && number.length() !=0 && ty.length() ==0)  
+           ilist = mng->findAll(PLIMIT, number); 
+       else
+       {
+           for (i = 0; i < mng->size();i++ )  ilist << i;
+       }
+
+       if (ilist.size() == 0 ) err = "No Package info found error";
+       else if (ilist.size() > 1)  err = "more than 1 Package info found error, number = " + QString("%1").arg(ilist.size());
+       else if (ilist.size() == 1) 
+       {
+           idx = ilist[0];
+           if (idx >=0 && idx < mng->size()) 
+           {
+               pinfo = (SPackInfo*)mng->get(idx);
+               if (pinfo !=NULL) 
+               {
+                   ir = unloadPackage(packid,pinfo);
+                   if (ir >=0) 
+                   {
+                       ir = createProofStr(proof, pinfo);
+                       err = "OK";
+                   }
+                   else
+                       err = "unload Package error";
+               }
+           }
+       }
+   }
+
+   if (err != "OK")  
+   {
+       info.err = err;
+       info.ret = -1;
+   }
+   else
+       info.ret = 1;
+   //plog(info, "addPackage");
+   return proof; 
+   #endif
+    
+
+}
 //-------remove packInfo * from packMng:--internal use
 /// return i  index of info in mng <0 err
 int SLicData::removePackage(QString packid, SPackInfo *info) // base remove
@@ -284,12 +387,14 @@ int SLicData::removePackage(QString uuid)
    QMap<QString, SPackInfo *> umap;
    SPackInfo *info;
    QStringList slist;
-   QString err, str;
+   QString err, str,packid,number;
 
    umap = findPackageInfo(UUID, uuid);
 
    sz = umap.size();
    ret = sz;
+   int ic;
+   ic = 0;
 
    //qDebug() << "umap.sz = " << sz;
    if (sz > 0)
@@ -299,6 +404,8 @@ int SLicData::removePackage(QString uuid)
       for (i = 0; i < sz; i++) // all uuid in different mng;
       {
          info = umap[slist[i]];
+         packid = info->packid;
+         number = QString("%1").arg(info->limit);
          ret1 = removePackage(slist[i], info);
          //qDebug()<< "inloop " << i << ret;
          if (ret1 < 0)
@@ -307,13 +414,17 @@ int SLicData::removePackage(QString uuid)
             //info->ret = ret1;
             //info->err += "removePackage(QString uuid) packid = " + slist[i];
             //plog(info);
-            break;
+             str = "removePackage  err: " + packid + number;
+             plog(str);
+            continue;
          }
          else
          {
             // plog in upper subs
             // str = "OK unloadPackage(QString uuid) packid = " + slist[i];
-            //plog(str);
+             str = "removePackage ok: " + packid + number;
+             plog(str);
+             ic++;
          }
       } //
 
@@ -331,63 +442,79 @@ int SLicData::removePackage(QString uuid)
    }
    else
    {
-      err = "ERR:  removePackage(QString uuid): is Err removed package number = " + QString("%1 ").arg(ret) + uuid;
+      err = "ERR:  removePackage(QString uuid): is Err removed package number = " + QString("%1,should:%2 ").arg(ic).arg(sz) + uuid;
       plog(err);
    }
    return ret;
 }
-int SLicData::unloadPackage(QString uuid, QString filen)
+int SLicData::unloadPackage(QString uuid, QString& proof)
 {
    int i, sz, ret, ret1;
    QMap<QString, SPackInfo *> umap;
    SPackInfo *info;
    QStringList slist;
    QString err, str;
-   QString filenn;
+   QString proofPart,packid,number;
 
    umap = findPackageInfo(UUID, uuid);
 
    sz = umap.size();
    ret = sz;
    int ir;
+   int ic;
+   ic = 0;
 
    // qDebug() << "umap.sz = " << sz;
    if (sz > 0)
    {
       slist = umap.keys();
-      //qDebug()<< "find uuid ,slist= " << slist ;
+      qDebug()<< "unload file uuid sz= " << sz << slist ;
       for (i = 0; i < sz; i++) // all uuid in different mng;
       {
 
          info = umap[slist[i]];
+         packid = info->packid;
+         number = QString("%1").arg(info->limit);
          // qDebug() << i;<< info;
          ret1 = unloadPackage(slist[i], info);
          //qDebug()<< "inloop " << i << ret1;
+
          if (ret1 < 0)
          {
             ret = i;
             //info->ret = ret1;
             //info->err += "removePackage(QString uuid) packid = " + slist[i];
             //plog(info);
-            break;
+            //break; // stop to unload the later;
+            str = "unloadPackage err:" + packid + number;
+            plog(str);
+            continue; // goon to unload the left;
          }
          else
          {
             // plog in upper subs
             // str = "OK unloadPackage(QString uuid) packid = " + slist[i];
             //plog(str);
-            if (i == 0) filenn = filen;
-            else filenn = filen + QString("%1").arg(i);
-            ir = createProof(filenn, info);
+
+            ir = createProofStr(proofPart, info);
+
             //qDebug() << ir;
             if (ir < 0)
             {
                ret = i;
-               break;
+               //break;
+               str = "unloadPackage  create proof err: " + packid + number;
+               plog(str);
+               continue;
             }
+            proof = proof + proofPart;
+            if (i != sz - 1)  proof = proof + "\n";
+            ic++;
+            str = "unloadPackage  ok: " + packid + number;
+            plog(str);
+
          }
       } //for
-
    }
    else
    {
@@ -396,14 +523,14 @@ int SLicData::unloadPackage(QString uuid, QString filen)
    }
    //qDebug() << "unload out";
    // log
-   if (ret == sz && ret > 0)
+   if (ret == sz && ret > 0 && proof.length() > 0)
    {
-      err = "OK:  unloadPackage(QString uuid): is OK removed package number = " + QString("%1 ").arg(sz) + uuid;
+      err = "OK:  unloadPackage(QString uuid): is OK unloaded package number = " + QString("%1 ").arg(sz) + uuid;
       plog(err);
    }
    else
    {
-      err = "ERR:  unloadPackage(QString uuid): is Err removed package number = " + QString("%1 ").arg(ret) + uuid;
+      err = "ERR:  unloadPackage(QString uuid): is Err  unloaded  package number = " + QString("%1,should: %2 ").arg(ic).arg(sz)  + uuid;
       plog(err);
    }
 
@@ -429,6 +556,7 @@ int SLicData::createProof(QString filen, SPackInfo *inf)
    sign = inf->get(VENDERSIGN).toString();
    printf("11111\n");
    proof = packID + DELIMIT_PROOF + ty + DELIMIT_PROOF + limit + DELIMIT_PROOF + start + DELIMIT_PROOF + end + DELIMIT_PROOF + sinID + DELIMIT_PROOF + soutID + DELIMIT_PROOF + uuid + DELIMIT_PROOF + sign;
+
    len = en.encrypt(proof.Q2CH, proof.length(), buf, PASSWD_PROOF);
    if (len <= 0)  return -1; // encrypt failed
    qDebug() << proof;
@@ -532,6 +660,200 @@ int SLicData::verifyProof(QString filen, SPackInfo *& retInfo)
             }
             else continue;
          }
+      }
+      else err = " packMng is NULL";
+   }
+   else err = " no this packID = " + packID;
+   if (ret == -1)
+   {
+      retInfo = NULL;
+      err = "verify proof : " + err;
+      plog(err);
+   }
+   else
+   {
+      retInfo = info;
+      plog(info, "verifyProof");
+   }
+
+   qDebug() << "verify proof err = " << err << info << retInfo;
+
+   return ret;
+}
+/// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
+int SLicData::createProofStr(QString& text, SPackInfo *inf)
+{
+
+   QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
+   QString proof, enProof;
+   LEncrypt en;
+
+   packID = inf->packid;
+   ty = inf->get(PTYPE).toString();
+   limit = inf->get(PLIMIT).toString();
+   start = inf->get(PSTARTDATE).toString();
+   end = inf->get(PENDDATE).toString();
+   sinID = inf->get(SERVERID).toString();
+   soutID = inf->get(BMID).toString();
+   uuid = inf->get(UUID).toString();
+   sign = inf->get(VENDERSIGN).toString();
+   //printf("11111\n");
+   proof = packID + DELIMIT_PROOF + ty + DELIMIT_PROOF + limit + DELIMIT_PROOF + start + DELIMIT_PROOF + end + DELIMIT_PROOF + sinID + DELIMIT_PROOF + soutID + DELIMIT_PROOF + uuid + DELIMIT_PROOF + sign;
+
+   string inStr, outStr;
+   inStr = proof.Q2CH;
+   outStr = en.encodePassHex(inStr, PASSWD_PROOF);
+   text = outStr.c_str();
+   // add: text:
+   QString str ;
+   str = packID+"_"+limit+":";
+   text = str +text;
+   return text.length();
+
+#if 0
+   len = en.encrypt(proof.Q2CH, proof.length(), buf, PASSWD_PROOF);
+   if (len <= 0)  return -1; // encrypt failed
+   qDebug() << proof;
+//geoeast_pc1_1.0%%task%%2%%20170101%%20180101%%73947D61-D163D96C-03295769-F3BF5EB7%%73947D61-D163D96C-03295769-F3BF5EB7%%df3d81d2-2484-45d3-8bb4-79d161691cf3%%0B2C366330A53B2FE2B17FD57103BE69615166AB47FAC728B243E5991F5265C41FB8BB48BC9F76EE649E05A29871EDF75EF52F0431F7270BF2FA8446C60A5F8BEF664386890BC4BBB7F92591B63AFA73E443ABC2B223B61B9481CF9CD99DEEAC2D37391BFF3429BDC83E4C96B438FAF70DA35475C3E87581CEF1E3D8DD8CF5F8
+//qDebug() <<  "encrypt proof len = " << proof.length() << len;
+//printf("22222\n");
+// encrypt OK:
+
+   QFile file(filen);
+   if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) return -2;
+
+   ret = file.write(buf, len);
+   if (ret != len)  return -3;
+
+   //qDebug() <<  "write proof len = " <<  ret;
+
+   file.close();
+   ret = 1;
+   return ret;
+#endif
+}
+QString SLicData::proofInfo(QString proofs)
+{
+   int i, ii,ic;
+   QString  proof, str, rstr;
+   LEncrypt en;
+   string inStr, outStr;
+
+   QStringList sList, slist;
+
+   sList = proofs.split("\n");
+
+  // qDebug() << " size =" << sList.size();
+   //str = QString("proof number = %1\n").arg(sList.size());
+   rstr ="";
+   ic =0;
+   for (ii = 0; ii < sList.size(); ii++)
+   {
+       //add:
+      str = sList[ii];
+     // qDebug() << "ppp=" << str;
+      if (str.split(":").size() < 2) continue;
+      proof = str.split(":")[1]; 
+
+      inStr = proof.Q2CH;
+      outStr = en.decodePassHex(inStr, PASSWD_PROOF);
+      str =  outStr.c_str();
+      slist = str.split(DELIMIT_PROOF);
+      if (slist.size() < 5)  continue;
+      ic++;
+      i = 0;
+      rstr += " ===============================\n";
+      rstr += "packID = " + slist[i] + "\n"; i++;
+      rstr += "type   = " + slist[i] + "\n"; i++;
+      rstr += "limit  = " + slist[i] + "\n"; i++;
+      rstr += "start  = " + slist[i] + "\n"; i++;
+      rstr += "end    = " + slist[i] + "\n"; i++;
+      rstr += "sinID  = " + slist[i] + "\n"; i++;
+      rstr += "soutID = " + slist[i] + "\n"; i++;
+      rstr += "uuid   = " + slist[i] + "\n"; i++;
+      rstr += "sign   = " + slist[i] + "\n"; i++;
+   }
+   str = QString("proof number = %1\n").arg(ic);
+   rstr = str+rstr;
+   return rstr;
+
+}
+/// inf:found the Package borrowOut,for borrow return;
+int SLicData::verifyProofStr(QString& proof, SPackInfo *& retInfo)
+{
+   int   i;
+   QString packID, ty, limit, start, end, sinID, soutID, uuid, sign;
+   QString err, str;
+   LEncrypt en;
+   string inStr, outStr;
+   int ret;
+   QStringList slist;
+   //add":
+   qDebug() << "poof = " << proof;
+   str = proof;
+   str = str.split(":")[1];
+
+   inStr = str.Q2CH;
+   outStr = en.decodePassHex(inStr, PASSWD_PROOF);
+   str =  outStr.c_str();
+   slist = str.split(DELIMIT_PROOF);
+   if (slist.size() < 9)  return -1;
+
+   i = 0;
+   packID = slist[i]; i++;
+   ty = slist[i]; i++;
+   limit = slist[i]; i++;
+   start = slist[i]; i++;
+   end = slist[i]; i++;
+   sinID = slist[i]; i++;
+   soutID = slist[i]; i++;
+   uuid = slist[i]; i++;
+   sign = slist[i]; i++;
+// found the rigth info:
+
+   SPackMng *mng;
+   SPackInfo *info;
+   QString  ty1,  start1, end1, sinID1, soutID1, uuid1, sign1;
+
+
+   i = 0;
+   ret = -1;
+   err = "";
+   // found the rigth info:
+   if (isPackidInPack(packID))
+   {
+      mng = mapPack[packID];
+      if (mng != NULL)
+      {
+         //qDebug() << "mngSize = " << mng->size();
+         for (i = 0; i < mng->size(); i++)
+         {
+            info = (SPackInfo *)mng->get(i);
+            if (info == NULL) break;
+            //qDebug() << "limit = " << limit.toInt() << info->limit << info->isBorrowOut() << info->get(BMID).toString();
+            if (limit.toInt() == (-1 * info->limit) && info->isBorrowOut())
+            {
+               ty1 = info->get(PTYPE).toString();
+               start1 = info->get(PSTARTDATE).toString();
+               end1 = info->get(PENDDATE).toString();
+               sinID1 = info->get(BMID).toString();
+               soutID1 = info->get(SERVERID).toString();
+               uuid1 = info->get(PBORROW).toString();
+               sign1 = info->get(VENDERSIGN).toString();
+               qDebug() << "verify proof found info = " << packID << ty1 << start1 << end1 << sinID1 << soutID1 << uuid1 << sign1;
+               qDebug() << "verify proof found info = " << packID << ty << start << end << sinID << soutID << uuid << sign;
+               if (ty == ty1 && start == start1 && end == end1 && sinID == soutID1 && soutID == soutID1 && uuid == uuid1 && sign == sign1)
+               {
+                  ret = 1;
+                  retInfo = info;
+                  break;
+               }
+               else
+                   continue;
+            }
+            else continue;
+         }
+         err = "not found package";
       }
       else err = " packMng is NULL";
    }
@@ -724,7 +1046,7 @@ int SLicData::releaseApp(SAppInfo& info)
    {
       appmng = mapApp[packid]; // appmng
       mng = mapPack[packid];   // packmng;
-      i = mng->appRelease(info, appmng);
+      if (mng != NULL)  i = mng->appRelease(info, appmng);
    }
    else
    {
@@ -803,6 +1125,10 @@ int SLicData::addApp(SAppInfo& ainfo)
          mapApp[packid] = mng;
       }
       _lockApp.unlock();
+      // return ainfo
+      ainfo.set(APP_VENDERSIGN, info->get(APP_VENDERSIGN).toString());
+      ainfo.set(APP_PBORROW, info->get(APP_PBORROW).toString());
+
       //qDebug() << "return = " << i;
    }
    else // failed
@@ -932,7 +1258,7 @@ void SLicData::elog(SAppInfo *info, QString fun)
    if (info->ret > 0) return;
 
    QString str;
-   str = "Error: " +  info->packid + " " + info->appid + " " + info->user + " " + info->err;
+   str = "Error: in " + fun + " " + info->packid + " " + info->appid + " " + info->user + " " + info->err;
    //qDebug() << "elog = " <<str ;
    _elog.ts(str);
 }
@@ -1481,6 +1807,7 @@ int SLicData::loadDBApp(QDataStream& ds)
       amng->decode(ds);
       mapApp[slist[i]] = amng;
    }
+   return 1;
 }
 //================packDB interface====================================
 int  SLicData::saveDBPackage()
@@ -1872,7 +2199,7 @@ QString SLicData::dbName()
    QString s;
    s = dbDir() + "/" + DB_FILE;
    return s;
-   
+
 }
 QString SLicData::dbPtrName()
 {
@@ -1910,4 +2237,14 @@ QString  SLicData::getDBPackFileIndex()
 {
    return dbPackagePtrName();
 
+}
+void SLicData::setCheckUUID(bool b)
+{
+    //qDebug() << "setCheckUUID(bool b)0 = " << _checkUUID;
+   _checkUUID = b;
+   //qDebug() << "setCheckUUID(bool b)1 = " << _checkUUID;
+}
+bool SLicData::isCheckUUID()
+{
+   return _checkUUID;
 }

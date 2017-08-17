@@ -39,6 +39,8 @@ public:
     //int read(char *file);
     int writeFile(char *file);
     int writeFile(QString str);
+    QString writeStr();
+    //
     int writeStream(QTextStream *outs);
     int readStream(QTextStream *in);
     LInfo *  package(int i);

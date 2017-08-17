@@ -164,12 +164,15 @@ QString LFileDate::getText(QString s)
    f.setFileName(s);
    if (f.open(QIODevice::ReadOnly |QIODevice::Text )) 
    {
+       #if 1
        QTextStream in(&f);     
-       do
+       while (!in.atEnd()) 
        {
            str = in.readLine();
            rstr +=  str + "\n"; 
-       }while(!str.isNull());
+       } 
+       #endif
+     
        f.close();
    }
    return rstr; 
@@ -187,7 +190,7 @@ int LFileDate::writeText(QString file,QString text)
        f.close();
    }
    else
-       return 0;
+       return -1;
    return text.length(); 
 }
 int LFileDate::writeBuffer(QString file,char *buf,int len)
@@ -477,6 +480,7 @@ int LFileDate::rand10()
 QString LFileDate::randText10()
 {
     QString str;
+    str = "111111111111";
     int len;
     len = rand10();
     if (len == 0 ) len = 1;

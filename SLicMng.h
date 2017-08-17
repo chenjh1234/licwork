@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QMap>
 
+//#define CHECK_UUID 0
 
 #include "SLicData.h"
 #define OK 0
@@ -19,6 +20,9 @@
 #define LOADFILE_UUID_ERR -6
 #define LOADFILE_LOAD_ERR -7
 #define LOADFILE_DATE_ERR -8
+
+#define LOAD_LIC_FILE 0
+#define LOAD_LIC_STR 1
 
 #define INPUT_ERR "Error: input file  licfile.sample Parser error \n"
 #define SERVERPUB_ERR "Error: server Pub file is not exist!!!\n"
@@ -52,11 +56,25 @@ public:
    // int checkLicFile(QString filename,QString serverPri);// loadFile used
      int loadFile(QString filename);
      int checkLicFile(QString filename);// loadFile used
+
+     int loadFileStr(QString str);
+     int checkLicStr(QString str);// loadFile used
+     int checkLic(QString str,int mode);// loadFile used
+     int loadLic(QString str,int mode);// loadFile used
+
     //
     //int unloadPackage(QString vender,QString package,QString version,QString serverPri);
     //int unloadFile(QString filename,QString serverPri);
-    int unloadFile(QString filename,QString proofFile);
+
+    int unloadFile(QString filename,QString &proofStr);
+    int unloadFileStr(QString str,QString &proofStr);
+    int unloadLic(QString str,QString &proofStr,int mode );
+    QString unloadPackage(QString vender,QString pack,QString version,QString number="",QString ty="",QString uuid="");
+
     int removeFile(QString filename);
+    int removeFileStr(QString filename);
+    int removeFile(QString filename,int mode);
+
 //app login logout
     int loginApp(SAppInfo &msg);
     int logoutApp(SAppInfo &msg);
@@ -66,8 +84,11 @@ public:
     //QString filename, QString sPubIn,QString sPubOut,QString fo
     //int borrow(QString vender,QString package,QString version,QString type ,int number,QString start,QString end, QString mid);
     //int borrow(QString filename, QString sPUBIn,QString sPUBOut,QString fo);
-    int borrow(QString filename,QString fo);// idIn ,we can get ,idout:get from samplefile:
-    int borrowReturn(QString fileProof);
+    int borrow(QString &filename,QString &fo,int mode);//mode:0:file,1:string
+    int borrowFileStr(QString &str,QString &stro);//  input is lic string
+    int borrowFile(QString &filename,QString &fout);// input is filename,
+
+    int borrowReturn(QString Proof);// proof is a number of string,sperated by \n:each str is encrypted packageInfo and hex encoded.
 // dbpack2DB:
     int packDB2DB();
 // report:
@@ -79,6 +100,8 @@ public:
     //SLicData * getData(){return _data;};
     //void setData(SLicData* dt){_data = dt;};
 // check:
+    void setCheckUUID(bool b);
+    bool isCheckUUID();
     bool isUuid(QString packid,QString uuid);  
     bool isVenderSign(QString vendername,QString venderSign);
     // encode:
@@ -86,6 +109,7 @@ public:
 
     static SLicData * data;
 //private:
+   
     void init();
     QMap<int,QString>  mapLoadFile;// for load file error;
 

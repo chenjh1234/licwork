@@ -87,6 +87,7 @@ public:
     int find(QString name);
     int add(LInfo *info);// the info cannot be local, must be info = new LInfo(); otherwise it will be core down;
     int find(QString n,QVariant v,QString n1=QString(""),QVariant  v1=0,QString n2=QString(""),QVariant v2=0);// &&// return index
+    QList<int> findAll(QString n,QVariant v,QString n1=QString(""),QVariant  v1=0,QString n2=QString(""),QVariant v2=0);// &&// return index
     LInfo * get(int i);
     LInfo * get(char *name);
     LInfo * get(QString name);

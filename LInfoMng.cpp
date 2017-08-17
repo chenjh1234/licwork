@@ -362,6 +362,43 @@ int LInfoMng::find(QString n,QVariant v,QString n1,QVariant v1,QString n2,QVaria
    }
    return idx;
 }
+QList<int>  LInfoMng::findAll(QString n,QVariant v,QString n1,QVariant v1,QString n2,QVariant v2) 
+{
+   int i,idx;
+   LInfo *info;
+   idx = -1;
+   QList<int> ilist;
+
+   for(i = 0; i < size() ; i++)
+   {
+       info = m_list.at(i) ;
+       //qDebug() << info->isEQ(n, v) << info->isEQ(n1, v1) << info->isEQ(n2, v2);
+
+       if (n1 == QString(""))  
+       {
+           if (info->isEQ(n, v))  
+               idx = i;
+       }
+       else if (n2 == QString(""))
+       {
+           if (info->isEQ(n, v) && info->isEQ(n1, v1))  
+               idx = i;
+       }
+       else
+       {
+           if (info->isEQ(n, v) && info->isEQ(n1, v1) && info->isEQ(n2, v2))  
+               idx = i;
+       }
+        
+        
+       if (idx != -1)  
+       {
+           ilist.append(idx);
+           idx = -1;
+       }
+   }
+   return ilist;
+}
 /// find index of LInfo by nameid;
 int LInfoMng::find(QString name)
 {

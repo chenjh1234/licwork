@@ -101,6 +101,13 @@ int LLicFile::writeFile(char *filen)
    }
    return ret;
 }
+QString LLicFile::writeStr()
+{
+   QString text;
+      QTextStream outs(&text);
+      writeStream(&outs);
+   return text;
+}
 
 /// ckeck if important key in the file is exists(according venderDef,packageDef)
 bool LLicFile::isKeysExist()
