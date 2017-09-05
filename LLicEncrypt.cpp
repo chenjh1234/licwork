@@ -398,7 +398,8 @@ bool LLicEncrypt::verifyVenderSeed(QString venderPubChar, QString venderSign, QS
    LEncrypt en;
    str = venderSeed+serverID;
    //qDebug() << "verify = in,t,len " << VENDER_PUB << str.length() << venderSign.length();
-   qDebug() << " verify app=" << str << venderSign;
+   qDebug() << " verify seed,sid,sign" << venderSeed << serverID<<venderSign;
+   qDebug() << " pubchar =" << venderPubChar;
 
    b = en.verifyHexPubChar(venderPubChar.Q2CH, venderSign.Q2CH, str.Q2CH) ;
     
@@ -523,42 +524,4 @@ QString LLicEncrypt::getMidMark()
    str = str +s;
    return str;
 }
-QString LLicEncrypt::passwdToday(QString h )
-{
-    string m;
-    int i,n;
-    QList<int> ilist;
-    LFileDate fd;
-    LEncrypt cr;
-    QString seed,s,str;
-    bool ok;
-    seed = "mypasswd";
-        
 
-    str = fd.curDT();
-    str = str.left(8);// hour;
-    str = str + seed + h;
- 
-    m = cr.digest(str.Q2CH);
-    s = m.c_str();
-    qDebug() << "today =" << s;
-     
-    for(i = 0; i <32 ;i = i+5)
-    {
-        str = s.mid(i,5);
-        n = str.toInt(&ok, 16); 
-        if (n <0) n = -1*n;
-        ilist  << n- n/10*10;
-    }
-    n = ilist[0]*100000 + ilist[1]*10000 + ilist[2]*1000 + ilist[3]*100 + ilist[4]*10 + ilist[5];
-    str =QString("%1").arg(n,6,10,QLatin1Char('0'));
-    //qDebug() << "pass = " << str;
-    return str ;
-
-}
-bool LLicEncrypt::isPasswdToday(QString pass ,QString seed )
-{
-    QString str;
-    str = passwdToday(seed);
-    return (pass == str);
-}

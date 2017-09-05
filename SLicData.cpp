@@ -1,4 +1,5 @@
 #include "SLicData.h"
+
 SLicData ::SLicData()
 {
    QString str;
@@ -7,9 +8,9 @@ SLicData ::SLicData()
    str = curLogName(ALOG);
    _alog.setFile(str);
    str = curLogName(PLOG);
-   _plog.setFile(str);
-   
+   _plog.setFile(str); 
    setCheckUUID(true);
+   // load db
 #if 0
    _elog<< "1234567"<<endl;
    QString s;
@@ -275,7 +276,7 @@ int SLicData::unloadPackage(QString packid, SPackInfo *info) // base remove
    if (i >= 0)  i = saveDBPackage();
    return i; // index of info in mng <0 err
 }
-QString  SLicData::unloadPackage(SPackInfo &info)
+QString  SLicData::unloadPackage(SPackInfo &info,int mode)
 {
     #if 1
    QString vender,pack,version,ty,number,uuid,err,rs,proof,packid;
@@ -319,14 +320,23 @@ QString  SLicData::unloadPackage(SPackInfo &info)
                pinfo = (SPackInfo*)mng->get(idx);
                if (pinfo !=NULL) 
                {
-                   ir = unloadPackage(packid,pinfo);
+                   if (mode == 0)  
+                       ir = unloadPackage(packid, pinfo);
+                   else
+                       ir =  removePackage(packid, pinfo);
+                   // proof:
                    if (ir >=0) 
                    {
                        ir = createProofStr(proof, pinfo);
                        err = "OK";
                    }
                    else
-                       err = "unload Package error";
+                   {
+                       if (mode == 0)  
+                           err = "unload Package error"; 
+                       else
+                           err = "remove Package error"; ;
+                   }
                }
            }
        }
@@ -336,10 +346,11 @@ QString  SLicData::unloadPackage(SPackInfo &info)
    {
        info.err = err;
        info.ret = -1;
+       qDebug() << err;
    }
    else
        info.ret = 1;
-   //plog(info, "addPackage");
+   plog(&info, QString("unloadPackage"));
    return proof; 
    #endif
     
@@ -1145,7 +1156,6 @@ int SLicData::addApp(SAppInfo& ainfo)
    {
       info->ret = i;
       info->end = fd.sEP();
-
       elog(info);
    }
    //qDebug() << "return2 = " << i;
@@ -1257,8 +1267,9 @@ void SLicData::elog(SAppInfo *info, QString fun)
 {
    if (info->ret > 0) return;
 
-   QString str;
-   str = "Error: in " + fun + " " + info->packid + " " + info->appid + " " + info->user + " " + info->err;
+   QString str,appname;
+   appname =  info->get(APP_NAME).toString();
+   str = "Error: in " + fun + " " + info->packid + " " + info->appid + " " + info->user + " " +appname + " " + info->err;
    //qDebug() << "elog = " <<str ;
    _elog.ts(str);
 }
@@ -1269,10 +1280,15 @@ void SLicData::elog(SAppInfo *info, QString fun)
 void SLicData::alog(SAppInfo *info)
 {
    _lockLog.lock();
-   QString str;
+   QString str,start,end,appname;
    str = _dt.curDT();
+   info->end = _dt.sEP();
+   start = _dt.EP2DT(info->start);
+   end = _dt.EP2DT(info->end);
+   appname =  info->get(APP_NAME).toString();
+
    _alog << str;
-   _alog << info->packid << info->appid << info->user << info->start << info->end << info->end - info->start << info->number << info->rtype << endl;
+   _alog << info->packid << info->appid << info->user << appname << start << end << info->end - info->start << info->number << info->rtype << endl;
    _lockLog.unlock();
 }
 //====================================saveDB==============loadDB============
@@ -1481,7 +1497,7 @@ int SLicData::saveDBMsg(QString fileDB, QString filePtr)
    fcdate = _dt.TID(fileDB);
 
 #if 1
-   qDebug() << fpath;
+   qDebug() <<" in dbsave" <<  fpath;
    qDebug() << fcdate;
    qDebug() << fmds5;
    qDebug() << finode;
@@ -1521,7 +1537,7 @@ int SLicData::saveDBMsg(QString fileDB, QString filePtr)
    fmds5 = _dt.mds5(filePtr);
    QSettings st(ORG_NAME, SAPP_NAME);
    st.setValue(filePtr, fmds5);
-   //qDebug() << "date db end = " <<  _dt.TID(fileDB) << _dt.TID(filePtr);
+   qDebug() << "set mds5 = " <<   fmds5 ;
 
    return sz + 4;
 }
@@ -1616,6 +1632,27 @@ int SLicData::loadDBMsg()
    filePtr = getDBFileIndex();
    return loadDBMsg(fileDB, filePtr);
 }
+int SLicData::showDBPackMsg()
+{
+
+   QString fileDB, filePtr;
+   QStringList slist;
+   fileDB = getDBPackFile();
+   filePtr = getDBPackFileIndex();
+    showDBMsg(fileDB, filePtr);
+    return 0;
+}
+int SLicData::showDBMsg()
+{
+
+   QString fileDB, filePtr;
+   QStringList slist;
+
+   fileDB = getDBFile();
+   filePtr = getDBFileIndex();
+    showDBMsg(fileDB, filePtr);
+    return 0;
+}
 int SLicData::loadDBMsg(QString fileDB, QString filePtr)
 {
    int sz;
@@ -1629,10 +1666,12 @@ int SLicData::loadDBMsg(QString fileDB, QString filePtr)
 
    QString fpath, fcdate, fmds5, finode, fsz;
    QFileInfo fi(fileDB);
+   qDebug() << "dbfile = " << fileDB << filePtr;
    // ptr Mds5 load:
    fmds5 = _dt.mds5(filePtr);
    QSettings st(ORG_NAME, SAPP_NAME);
    fsz = st.value(filePtr, fmds5).toString();
+   qDebug() << "mds5-Ptr,set,real = " << fsz << fmds5;
    if (fsz != fmds5) RET("DB_PTR fileContains error");
 
    fpath = fi.absoluteFilePath();
@@ -1641,7 +1680,7 @@ int SLicData::loadDBMsg(QString fileDB, QString filePtr)
    finode = _dt.inodeFull(fileDB);
    fsz = _dt.size(fileDB);
 #if 1
-   qDebug() << fpath;
+   qDebug() << "load =" << fpath;
    qDebug() << fcdate;
    qDebug() << fmds5;
    qDebug() << finode;
@@ -1693,6 +1732,84 @@ int SLicData::loadDBMsg(QString fileDB, QString filePtr)
 
    ptr.close();
    return sz;
+}
+int SLicData::showDBMsg(QString fileDB, QString filePtr)
+{
+   int sz;
+   //  QString fileDB, filePtr;
+   QStringList slist;
+
+   //  fileDB = getDBFile();
+   //  filePtr = getDBFileIndex();
+
+   QFile ptr(filePtr);
+
+   QString fpath, fcdate, fmds5, finode, fsz;
+   QFileInfo fi(fileDB);
+   qDebug() << "dbfile  ptr = " << fileDB << filePtr;
+   // ptr Mds5 load:
+   fmds5 = _dt.mds5(filePtr);
+   QSettings st(ORG_NAME, SAPP_NAME);
+   fsz = st.value(filePtr, fmds5).toString();
+   qDebug() << "ptr mds5 real = " <<fmds5;
+   qDebug() << "ptr mds5 fromSet= " <<fsz;
+    
+   fpath = fi.absoluteFilePath();
+   fcdate = _dt.TID(fileDB);
+   fmds5 = _dt.mds5(fileDB);
+   finode = _dt.inodeFull(fileDB);
+   fsz = _dt.size(fileDB);
+#if 1
+   qDebug() << "path= " << fpath;
+   qDebug() << "date= " << fcdate;
+   qDebug() << "mds5= " << fmds5;
+   qDebug() << "node= " << finode;
+   qDebug() << "size= " << fsz;
+#endif
+//open:
+   int ilen;
+   QString str;
+   if (!ptr.open(QIODevice::ReadOnly)) return -2;
+   QDataStream ds(&ptr);
+   ds >> str;
+   if (str != fpath) RET("DB filePath error");
+   ds >> str;
+   ilen = abs(_dt.diffDT(str, fcdate));
+   qDebug() << " DB Date = " << str << fcdate << ilen;
+
+   //if(str != fcdate) RET("DB fileDate error");
+   ds >> str;
+   qDebug() << " DB dms5 = " << str ;
+   ds >> str;
+   qDebug() << " DB node = " << str ;
+   ds >> str;
+   qDebug() << " DB size = " << str ;
+   QFileInfo fii(filePtr);
+   int i;
+   fpath = fii.absoluteFilePath();
+   finode = _dt.inodeFull(filePtr);
+   fcdate = _dt.TID(filePtr);
+   sz = ptr.size();
+   qDebug() << " fpath = " << fpath ;
+   qDebug() << " node = " << finode ;
+    qDebug() << " date = " << fcdate ;
+    qDebug() << " sz= " << sz;
+   ds >> str;
+   qDebug() << " ptr path = " << str ;
+   ds >> str;
+    qDebug() << " ptr node = " << str ;
+   ds >> str; // randText10: make the ptr file rand length;
+    qDebug() << " ptr gap = " << str ;
+   ds >> str;
+    qDebug() << " ptr gdate = " << str ;
+   //ilen = abs(str.toLong() - fcdate.toLong());
+   ilen = abs(_dt.diffDT(str, fcdate));
+   qDebug() << " ptr Date = " << str << fcdate << ilen;
+   ds >> i;
+   qDebug() << " ptr size = " << i;
+   ptr.close();
+   return 1;
+   
 }
 
 #if 0 // old one
@@ -1747,16 +1864,29 @@ int SLicData::loadDB()
 #if 1 // new one
 int SLicData::loadDB()
 {
+   QString str;
    int   i;
    QString fileDB;
    QStringList slist;
    if (!isDBRegisted())
    {
       i = registerDB();
-      return i;
+      if (i <0)  
+      {
+          str = "loadDB:register DB error";
+          plog(str);
+          return i; 
+      }
    }
    i = loadDBMsg();
-   if (i <= 0)  return -1;
+   if (i <= 0) 
+   {
+       str = "loadDB error: load DBMMsg error";
+       qDebug() << str;
+       plog(str);
+
+        return -1;
+   }
 
    fileDB = getDBFile();
    QFile file(fileDB);
@@ -1764,6 +1894,33 @@ int SLicData::loadDB()
    QDataStream ds(&file);
    loadDBPack(ds);
    loadDBApp(ds);
+// close
+   file.close();
+   return 1;
+
+}
+int SLicData::showDB(int mode)
+{
+   QString str;
+   int   i;
+   QString fileDB;
+   QStringList slist;
+   if (mode == 0)  
+       i = showDBMsg(); 
+   else
+       i = showDBPackMsg(); 
+
+   if (mode == 0)  
+       fileDB = getDBFile();
+   else
+       fileDB = getDBPackFile();
+
+   QFile file(fileDB);
+   if (!file.open(QIODevice::ReadOnly)) return -1;
+   QDataStream ds(&file);
+   showDBPack(ds);
+   if (mode == 0)  
+       showDBApp(ds); 
 // close
    file.close();
    return 1;
@@ -1789,6 +1946,40 @@ int SLicData::loadDBPack(QDataStream& ds)
       mapPack[slist[i]] = pmng;
    }
    return sz;
+}
+int SLicData::showDBPack(QDataStream& ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+// pack:
+   SPackMng *pmng;
+
+   ds >> slist;
+   sz = slist.size();
+   //qDebug() << "slist in load = " << slist;
+   for (i = 0; i < sz; i++)
+   {
+      qDebug() << i << slist[i];
+   }
+   return sz;
+}
+int SLicData::showDBApp(QDataStream& ds)
+{
+   int sz, i;
+   QString fileDB;
+   QStringList slist;
+
+// app:
+   SAppMng *amng;
+   ds >> slist;
+
+   sz = slist.size();
+   for (i = 0; i < sz; i++)
+   {
+      qDebug() << i << slist[i];
+   }
+   return 1;
 }
 int SLicData::loadDBApp(QDataStream& ds)
 {
@@ -2247,4 +2438,35 @@ void SLicData::setCheckUUID(bool b)
 bool SLicData::isCheckUUID()
 {
    return _checkUUID;
+}
+bool SLicData::startup()
+{
+    //cyc.start();
+    QString str;
+    int i;
+    i = loadDB();
+    if (i <=0 ) 
+    {
+        i = loadDBPackage();
+        if(i <= 0) return false;
+        str = "load DB from DBPackage OK !!!!!";
+        qDebug() << str;
+        plog(str);
+    }
+    else
+    {
+        str = "load DB from DB OK!!!!!";
+        qDebug() << str;
+        plog(str);
+    }
+
+    return true;
+}
+void SLicData::down()
+{
+    //cyc.setDown();
+    qDebug() << "down the licdata";
+    saveDB();
+    //cyc.join();
+
 }

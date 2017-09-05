@@ -17,6 +17,9 @@
 #define WRITEFILE_ERR "Error: write license file  error\n"
 #define MID_ERR "Error: mid length error\n"
 //========================================start main=======================
+#define PTYPE_TASK "task"
+#define PTYPE_NODE "node"
+#define PTYPE_USER "user"
 
 void exitM(int id)
 {
@@ -150,6 +153,12 @@ U_START(testCreateLic)
       str = lic.digestPackageKey(venderKey, infoP);
       //qDebug() << "pkey1 = " << str.length() << str << PKEY;
       infoP->set(PKEY, str);
+      str = infoP->get(PTYPE).toString();
+      if (!(str ==PTYPE_TASK || str == PTYPE_USER || str ==PTYPE_NODE)) 
+      {
+          cout << "Package type error: "<< str.Q2CH << endl;
+          exit(1);
+      }
       //qDebug() << "pkey2 = " << PKEY;
 #ifdef TEST_UNIT
       //qDebug() << "pkey = " << str;

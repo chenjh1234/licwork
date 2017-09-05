@@ -6,7 +6,7 @@ SCycleThread::SCycleThread():QThread()
     rDbSave.setRun(DB_SAVE_INT);
     rDayCheck.setRun(DAY_CHECK_INT);
     rAppExp.setRun(APP_EXP_INT);
-    setDown(0);
+    setDown(0);// not down
     init();
     
 }
@@ -56,11 +56,19 @@ bool SCycleThread::isDown()
 void SCycleThread::run()
 {
     long dc;//daycheck
+    int ic;
     init();
+
     while (1) 
     {
+        ic = 0;
         qDebug() << "HB_INT =" << HEARTBEAT_INT ;//<< TEST_CYCLE;
-        sleep(HEARTBEAT_INT);
+        while (ic < HEARTBEAT_INT) 
+        {
+            sleep(1); // delay maxmun = 1;
+            ic++;
+            if (isDown()) break;
+        }
         if (isDown())  
         {
             qDebug() <<  "i down----------------------";

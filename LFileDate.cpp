@@ -347,10 +347,11 @@ QString LFileDate::DT(QDateTime t)
     return str;
 }
 /// current date time of yyyymmddhhmmss
-QString LFileDate::curDT()
+QString LFileDate::curDT(int addS)
 {
     QDateTime dt;
     dt = dt.currentDateTime();
+    dt = dt.addSecs(addS);
     return DT(dt);
 }
 /// current   date of yyyymmdd 
@@ -487,8 +488,125 @@ QString LFileDate::randText10()
     str.resize(len);
     return str;
 }
+//port====================================
+int LFileDate::getFreePort(int portStart,int portLen)
+{ 
+   int i,id;
+   int fd ,iret;
+   fd= socket(AF_INET, SOCK_STREAM, 0);
+   //qDebug() << "fd == " << fd;
+   struct sockaddr_in addr;
+   bzero(&addr, sizeof(addr));
+   addr.sin_family = AF_INET;
+   addr.sin_addr.s_addr = htonl (INADDR_ANY);
+   iret = -1;
+   for (i = portStart; i < portStart + portLen; i++)
+   {
 
-     
+      addr.sin_port = htons(i);
+      id = ::bind(fd, (struct sockaddr *)(&addr), sizeof(sockaddr_in));
+      //qDebug() << "err=" << strerror (errno) << fd <<id ;
+      if ( id < 0)
+      {
+         printf("port %d has been used.\n", i);
+         continue;
+      }
+      close(fd);
+      iret = i;
+      break;
+   }
+   //qDebug() <<"port we used = " << i;
+   return iret;
+}
+//passwd:====================================
+QString LFileDate::passwdToday(QString h )
+{
+    string m;
+    int i,n;
+    QList<int> ilist;
+    LFileDate fd;
+    LEncrypt cr;
+    QString seed,s,str;
+    bool ok;
+    seed = "mypasswd";  
+
+    str = fd.curDT();
+    str = str.left(8);// day;
+    str = str + seed + h;
+ 
+    m = cr.digest(str.Q2CH);
+    s = m.c_str();
+   
+    str = getPassStr(s);
+ 
+    return str ;
+
+}
+QString LFileDate::passwd2M(QString h)
+{
+    QString str;
+    str = passwdM(h,60);// next M;
+    return str ;
+
+}
+QString LFileDate::passwdM(QString h,int add )
+{
+    string m;
+    int i,n;
+    QList<int> ilist;
+    LEncrypt cr;
+    QString seed,s,str,str0;
+    bool ok;
+    seed = "mypasswd";  
+
+    str = curDT(add);
+    str0 = str.left(12);// M;
+    //qDebug() << "passwdM " << str << curDT() <<add<< str0;
+
+    str = str0 + seed + h;
+    m = cr.digest(str.Q2CH);
+    s = m.c_str();
+    str = getPassStr(s);
+    return str ;
+
+}
+QString LFileDate::getPassStr(QString dig )
+{
+    int i,n;
+    QList<int> ilist;
+    QString  s,str ;
+    bool ok;
+  
+    s = dig;
+    //qDebug() << "dig =" << s;
+    for(i = 0; i <32 ;i = i+5)
+    {
+        str = s.mid(i,5);
+        n = str.toInt(&ok, 16); 
+        if (n <0) n = -1*n;
+        ilist  << n- n/10*10;
+    }
+    n = ilist[0]*100000 + ilist[1]*10000 + ilist[2]*1000 + ilist[3]*100 + ilist[4]*10 + ilist[5];
+    str =QString("%1").arg(n,6,10,QLatin1Char('0'));
+    //qDebug() << "pass = " << str;
+    return str ;
+
+}
+bool LFileDate::isPasswdToday(QString pass ,QString seed )
+{
+    QString str;
+    str = passwdToday(seed);
+    return (pass == str);
+}
+bool LFileDate::isPasswd2M(QString pass ,QString seed )
+{
+    QString str,str1;
+    str = passwdM(seed);
+    str1 = passwdM(seed,60);
+    //qDebug() << str <<str1 << pass;
+    return (pass == str || pass == str1);
+}
+ 
 #if 0
 void fileTest()
 {

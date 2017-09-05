@@ -377,7 +377,7 @@ U_START(fileapi)
     qDebug() << "inodeHalf= "  << f.inode("fileDB.db");
     qDebug() << "inodeDec= "  << f.inodeDec("fileDB.db");
     qDebug() << "mds5= "  << f.mds5("fileDB.db");
-
+#if 0
     LLicEncrypt lic;
  lic.passwdToday();
  lic.passwdToday("123");
@@ -390,6 +390,7 @@ U_START(fileapi)
      str=QString("%1").arg(1000*i);
      lic.passwdToday(str); 
  }
+ #endif
 
 U_END
 U_START(SLicMngLoadFile)
@@ -1046,7 +1047,7 @@ U_START(reportPackApp)
     }
     
 U_END
-U_START(fileDate);
+U_START(fileDate)
     LFileDate fd;
     QString str,str1,filen,dt1,dt2;
     int len;
@@ -1078,7 +1079,16 @@ U_START(fileDate);
     len = fd.testFileCTime();
     qDebug() << "cdateMis = " << len; 
     EQ(len, 0); 
-U_END
+    PR("======passwd====================");
+    str= fd.passwd2M("removepackage");
+    EQ(fd.isPasswd2M(str,"removepackage"),true);
+    sleep(60);
+    EQ(fd.isPasswd2M(str,"removepackage"),true);
+    sleep(60);
+    EQ(fd.isPasswd2M(str,"removepackage"),true);
+
+
+    U_END
 U_START(removeFile)
     SLicMng sm;
     int i;
@@ -1437,14 +1447,49 @@ U_START(dev)
      EQ(SL.size(),4)
                                 
  U_END
+U_START(unloadPackage)
+ 
+    SLicMng sm;
+    LFileDate fd;
+    QStringList SL;
+    int i;
+     
+    REPORT
+    QString vender,pack,version,number,ty,uuid,pass,str;
+    int n;
+    vender = "geoeast";
+    pack = "pc1";
+    version = "1.0";
+    number = "10";
+    ty= "task";
+    uuid = "ddb985e2-d7fc-4647-9764-e24c2d90506a";
+     
+ 
+    str = sm.unloadPackage(vender,pack,version,number,ty,uuid);
+    GT(str.length(),0);
+    REPORT
+
+    pass = fd.passwd2M("removepackage");
+    str = sm.unloadPackage(vender,pack,version,number,ty,uuid,pass);
+    GT(str.length(),0);
+    pack = "pc2";
+     pass = fd.passwd2M("removepackage");
+    str = sm.unloadPackage(vender,pack,version,number,ty,uuid,pass);
+    GT(str.length(),0);
+
+    REPORT
+
+U_END
 
 M_START
+
 #if 0// whole test of 
 #if 1
 // base test of licfiles,load file log;
     testCrypt();// in .cpp
     U_TEST(Qlist_remove_ptr)
     U_TEST(basInfo)
+    U_TEST(fileDate);
     U_TEST(licfile)
     U_TEST(licapi)
     U_TEST(fileapi)
@@ -1550,9 +1595,22 @@ M_START
 
 #endif // end of whole  test 
 
+  //U_TEST(fileDate);
+         #if 1 // remove unload licfile test
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(checkLoadFiles)
+     U_TEST(removeFile)
 
-U_TEST(dataClear)
-U_TEST(dev)
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(checkLoadFiles)
+     U_TEST(unloadFile)
 
+     U_TEST(dataClear)
+     U_TEST(LoadFiles)
+     U_TEST(unloadPackage)
+     #endif
+     
 
 M_END

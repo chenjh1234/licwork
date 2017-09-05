@@ -33,7 +33,7 @@ QString showProof(QString proofs)
 
    sList = proofs.split("\n");
 
-  // qDebug() << " size =" << sList.size();
+   //qDebug() << " size =" << sList.size();
    //str = QString("proof number = %1\n").arg(sList.size());
    rstr ="";
    ic = 0;
@@ -42,7 +42,7 @@ QString showProof(QString proofs)
    {
        //add:
       str = sList[ii];
-     // qDebug() << "ppp=" << str;
+      //qDebug() << "line =" << str;
       if (str.split(":").size() < 2) continue;
       proof = str.split(":")[1]; 
 

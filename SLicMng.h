@@ -69,7 +69,7 @@ public:
     int unloadFile(QString filename,QString &proofStr);
     int unloadFileStr(QString str,QString &proofStr);
     int unloadLic(QString str,QString &proofStr,int mode );
-    QString unloadPackage(QString vender,QString pack,QString version,QString number="",QString ty="",QString uuid="");
+    QString unloadPackage(QString vender,QString pack,QString version,QString number="",QString ty="",QString uuid="",QString pass="");
 
     int removeFile(QString filename);
     int removeFileStr(QString filename);
@@ -105,6 +105,9 @@ public:
     bool isUuid(QString packid,QString uuid);  
     bool isVenderSign(QString vendername,QString venderSign);
     // encode:
+
+    bool startup();
+    void down();
     
 
     static SLicData * data;

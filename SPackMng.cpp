@@ -145,7 +145,7 @@ int  PResource::appRequest(SAppInfo& info, SAppMng *mng)
    info.rtype = ty;
 // return message:
    info.set(APP_VENDERSIGN, pinfo->get(VENDERSIGN));
-   if (pinfo->get(PBORROW).toString().length() > 0)  
+   if (pinfo->get(PBORROW).toString().length() > PBORROW_SIZE)  
        info.set(APP_PBORROW, pinfo->get(PBORROW)); 
    else
        info.set(APP_PBORROW, pinfo->get(SERVERID));

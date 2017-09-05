@@ -1,13 +1,22 @@
 #ifndef LFILEDATE_API_H
 #define LFILEDATE_API_H
 
-#include <sys/types.h>
+ 
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <iostream>
 
-#include <stdio.h>
-#include <stdlib.h>
+using namespace std;
+#include<stdio.h>  
+#include<stdlib.h>  
+#include<string.h>  
+#include<errno.h>  
+#include<sys/types.h>  
+#include<sys/socket.h>  
+#include<netinet/in.h>  
+#include <arpa/inet.h>
+
 #include <QDateTime>
 #include <QFileInfo>
 #include <QFile>
@@ -58,7 +67,7 @@ public:
 
 // date:
     QString getDateStr(int y,int m,int d);
-    QString curDT();//16
+    QString curDT(int s = 0);//16
     QString curT();//8
     QString curTMS();//8+3
     QString curD(); //8
@@ -77,6 +86,17 @@ public:
     int diffDT(QString t1,QString t2);
     int testFileCTime();
     int testFileCTime(QString filen);
+
+    int  getFreePort(int portStart,int portLen);
+    //
+    QString passwdToday(QString seed = "");
+    QString passwd2M(QString seed = "");
+
+    QString passwdM(QString seed = "",int add = 0);
+    QString getPassStr(QString dig);
+    bool isPasswdToday(QString pass ,QString seed = "");
+    bool isPasswd2M(QString pass ,QString seed = "");
+
 
    
 // rand:

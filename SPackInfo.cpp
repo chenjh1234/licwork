@@ -81,7 +81,7 @@ int SPackInfo::getStat()
    LFileDate fd;
    QString str, str1, start, end;
    int iflag;
-   str = fd.curDT();
+   str = fd.curD();
    start = get(PSTARTDATE).toString();
    end = get(PENDDATE).toString();
    if (str < start) iflag = STAT_OFF;

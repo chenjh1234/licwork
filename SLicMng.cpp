@@ -1,15 +1,27 @@
 #include "SLicMng.h"
 
 SLicData *SLicMng::data = new SLicData();
+//SLicData *SLicMng::data = NULL;
+
 SLicMng::SLicMng()
 {
    init();
-
 }
+
 SLicMng:: ~SLicMng()
 {
 
    //qDebug() << " end of licMng=======";
+}
+bool SLicMng::startup()
+{
+ 
+    return data->startup();
+}
+ 
+void SLicMng::down()
+{
+    data->down();
 }
 void SLicMng::init()
 {
@@ -25,8 +37,8 @@ void SLicMng::init()
    mapLoadFile[LOADFILE_VENDERSIGN_ERR] = ch[i]; i++;
    mapLoadFile[LOADFILE_UUID_ERR] = ch[i]; i++;
    mapLoadFile[LOADFILE_LOAD_ERR] = ch[i]; i++;
+   mapLoadFile[LOADFILE_DATE_ERR] = ch[i]; i++;
    //setCheckUUID(true);
-
 }
 
 //------------------app-----------------------------
@@ -116,7 +128,7 @@ int SLicMng::checkLic(QString filename, int mode)
 
    int num;
    LFileDate fd;
-   str = fd.curDT();
+   str = fd.curD();
    num  = licFile.size();
    //qDebug() << "packages = " << num;
    for (i = 0; i < num; i++)
@@ -125,6 +137,7 @@ int SLicMng::checkLic(QString filename, int mode)
       b = lic.isPackageKeyValid(venderKey, infoP);
       if (!b) return  LOADFILE_PACKAGEKEY_ERR;
       // checkDate:
+      qDebug () << str << infoP->get(PSTARTDATE).toString() <<infoP->get(PSTARTDATE).toString() ;
       if (str < infoP->get(PSTARTDATE).toString() || str > infoP->get(PENDDATE).toString())  return  LOADFILE_DATE_ERR;
    }
 
@@ -141,7 +154,7 @@ int SLicMng::loadFile(QString filename)
    if (i < 0)
    {
       err = "load file error: " + mapLoadFile[i] + " " + filename;
-      data->elog(err);
+      data->plog(err);
    }
    return i;
 }
@@ -153,8 +166,8 @@ int SLicMng::loadFileStr(QString str)
    if (i < 0)
    {
 
-      err = "load file error: " + mapLoadFile[i] + " " + str.left(20);
-      data->elog(err);
+      err = "load file error: " + QString("%1").arg(i) + " " +mapLoadFile[i] ;
+      data->plog(err);
    }
    return i;
 
@@ -264,7 +277,7 @@ int SLicMng::unloadFile(QString filename, QString& proofStr)
    if (i < 0)
    {
       err = "unload file error: " + mapLoadFile[i] + " " + filename;
-      data->elog(err);
+      data->plog(err);
    }
    return i;
    //return unloadLic(filename,proofStr,LOAD_LIC_FILE);
@@ -277,7 +290,7 @@ int SLicMng::unloadFileStr(QString str, QString& proofStr)
    if (i < 0)
    {
       err = "unload file error: " + mapLoadFile[i] + " " + str;
-      data->elog(err);
+      data->plog(err);
    }
    return i;
    //return unloadLic(str,proofStr,LOAD_LIC_STR);
@@ -310,11 +323,14 @@ int SLicMng::unloadLic(QString filename, QString& proofStr, int mode)
    ret = data->unloadPackage(uuid, proofStr);
    return ret;
 }
-QString SLicMng::unloadPackage(QString vender,QString pack,QString version,QString number,QString ty,QString uuid)
+/// pass ="" : unload, else remove
+
+QString SLicMng::unloadPackage(QString vender,QString pack,QString version,QString number,QString ty,QString uuid,QString pass)
 {
 
    SPackInfo info;
    QString packid,str,ret;
+   LFileDate fd;
 
    info.set(VENDERNAME, vender);
    info.set(PACKAGENAME, pack);
@@ -322,9 +338,23 @@ QString SLicMng::unloadPackage(QString vender,QString pack,QString version,QStri
    info.set(PTYPE, ty);
    info.set(PLIMIT, number);
    info.set(UUID, uuid);
+   int mode;
+   mode = 0;
    //packid = data->encodePackageId(vender, pack, version);
-    
-   ret = data->unloadPackage(info);
+   if (pass == "")  
+   {
+       ret = data->unloadPackage(info,mode);
+   }
+   else
+   {
+       mode = 1;
+       if (fd.isPasswd2M(pass,"removepackage"))  
+       {
+           ret = data->unloadPackage(info,mode);
+       }
+       else
+           qDebug() << " ===========passwd is not valid";
+   }
    return ret;
 }
 int SLicMng::removeFile(QString filename)
@@ -574,8 +604,8 @@ QStringList SLicMng::reportPackage(QString pack)
    QStringList  slist;
    SPackMng *mng;
    SPackInfo *info;
-   QString name, ty, size, str, limit, start, end, bmid,stat;
-   int used, limitAll,limit0;
+   QString name, ty, size, str, limit, start, end, bmid,stat,uuid;
+   int used, limitAll,limit0,left;
    int len1, len2, len3;
    len1 = 10;
    len2 = 20;
@@ -599,6 +629,7 @@ QStringList SLicMng::reportPackage(QString pack)
       start = info->get(PSTARTDATE).toString();
       end = info->get(PENDDATE).toString();
       bmid = info->get(BMID).toString();
+      uuid = info->get(UUID).toString();
       limit0 = info->limit;
       stat = info->statStr();
       if (ty == PTYPE_TASK)
@@ -616,7 +647,9 @@ QStringList SLicMng::reportPackage(QString pack)
          limitAll = mng->userLimit();
          used = mng->userUsed();
       }
-      str = QString("%1 %2 %3 %4 %5 %6 %7 %8 %9 %10").arg(pack, len3).arg(ty, len1).arg(limitAll, len1).arg(used, len1).arg(limit0, len1).arg(limit, len1).arg(stat, len1).arg(start, len3).arg(end, len3).arg(bmid, len3);;
+      left = limitAll - used;
+    
+      str = QString("%1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11 %12").arg(pack, len3).arg(ty, len1).arg(limitAll, len1).arg(used, len1).arg(left, len1).arg(limit0, len1).arg(limit, len1).arg(stat, len1).arg(start, len1).arg(end, len1).arg(uuid, len3).arg(bmid,len3);
       slist << str;
    }
 
@@ -650,7 +683,7 @@ QStringList SLicMng::reportApp(QString pack)
    QStringList  slist;
    SAppMng *mng;
    SAppInfo *info;
-   QString appid, user, ty, str, start;
+   QString appid, user, ty, str, start,appname;
    //long start;
    LFileDate fd;
    int len1, len2, len3;
@@ -675,7 +708,8 @@ QStringList SLicMng::reportApp(QString pack)
       start = fd.EP2DT(info->start);
       ty = info->rtype;
       number = info->number;
-      str = QString("%1 %2 %3 %4 %5 %6").arg(pack, len3).arg(appid, len2).arg(user, len1).arg(number, len1).arg(ty, len1).arg(start, len3);
+      appname = info->get(APP_NAME).toString();
+      str = QString("%1 %2 %3 %4 %5 %6 %7").arg(pack, len3).arg(appid, len2).arg(user, len1).arg(number, len1).arg(ty, len1).arg(start, len3).arg(appname,len3);
       slist << str;
    }
    //qDebug() << "slist_size = " << slist.size();

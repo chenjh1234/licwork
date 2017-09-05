@@ -18,6 +18,8 @@
 #define BORROW_YES "yes"
 #define BORROW_NO "no"  
 
+#define PBORROW_SIZE 5
+
 #define PTYPE_TASK "task"
 #define PTYPE_NODE "node"
 #define PTYPE_USER "user"

@@ -19,6 +19,7 @@
 #include "LLicEncrypt.h"
 #include "SLog.h"
 #include "DBstat.h"
+//#include "SCycleThread.h"
 
 #include "SAppMng.h"
 #include "SPackMng.h"
@@ -52,7 +53,7 @@
 #define DB_PACKFILE "packDB.db"
 #define DB_PACKFILE_PTR "packDB.db.ptr"
 
-#define DBDATE_MIS 10
+#define DBDATE_MIS 70//10
 // all the things: needs threadsafe:
 class SLicData
 {
@@ -69,7 +70,9 @@ public:
     int removePackage(QString uuid);// move the pakage to packRemoved; lock in: from uncloadFile,call 
     int removePackage(QString packid,SPackInfo * inf);// move the pakage to packRemoved; base removed // return size of info in mng;
     int unloadPackage(QString packid,SPackInfo * inf);// set the info limit = 0; 
-    QString unloadPackage(SPackInfo &inf);
+
+    QString unloadPackage(SPackInfo &inf,int mode = 0);
+   
 
     int createProof(QString prooffile,SPackInfo * inf);// inf:create unloaded package proof file,usally for borrow In package ,unalod and return to the borrow Out server
     int verifyProof(QString filen,SPackInfo * &info);// inf:found the Package borrowOut,for borrow return;
@@ -125,10 +128,18 @@ public:
     int checkAppExp(long intvS);//return number of app expired;
     int checkAppExp(QString packID,long intvs);
 // DB------------------------------------------------
+    int clear();
+    //db:
     int saveDB();//return bytes of filePtr
     int loadDB();
+    //packageDB:
+    int saveDBPackage();
+    int loadDBPackage();
+    // show DB:
+
+    int showDB(int mode);
      
-    // apck app:
+    // pack app: internal use
     int saveDBPack(QDataStream &ds);
     int saveDBApp(QDataStream &ds);
     int loadDBPack(QDataStream &ds);
@@ -140,17 +151,24 @@ public:
     int saveDBMsg(QString fileDB,QString filePtr);
     int loadDBMsg(QString fileDB,QString filePtr);
 
+    int showDBMsg(QString fileDB, QString filePtr);
+    int showDBMsg();
+    
+    int showDBPack(QDataStream &ds);
+    int showDBApp(QDataStream &ds);
+    int showDBPackMsg();
+
     int registerDB();
     bool isDBRegisted();
 
-    int clear();
+ 
     QString getDBFile();
     QString getDBFileIndex();
-   // forPackageOnly:
-    int saveDBPackage();
-    int loadDBPackage();
     QString getDBPackFile();
     QString getDBPackFileIndex();
+
+
+
 
 // util
     QString hex(QString);
@@ -170,6 +188,8 @@ public:
     QString dbPackagePtrName();
     bool mkDir(QString dir);// make sure the dir exist;
 
+    
+
 
 // log :
     void plog(SPackInfo *info,QString str ="");
@@ -182,6 +202,11 @@ public:
 
     void setCheckUUID(bool b);
     bool isCheckUUID();
+  // startup: and down:
+    bool startup();
+    void down();
+    //SCycleThread cyc;
+
 private:
 // statis
     DBsecond stApp,stAppErr;

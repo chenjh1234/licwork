@@ -45,7 +45,7 @@ int SLog::setFILE(FILE *f)
 }
 void SLog::close()
 {
-        qDebug() << "ddddddddd-----dddddd";
+       // qDebug() << "ddddddddd-----dddddd";
     if (_ts != NULL) 
     {
         _ts->flush();

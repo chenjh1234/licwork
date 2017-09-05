@@ -1,4 +1,4 @@
-#include "LLicEncrypt.h"
+#include "LFileDate.h"
 #include <QString>
 #define UUID PASSWDTODAY
 
@@ -25,7 +25,7 @@ main(int argc, char **argv)
 #else
 U_START(testUUID)
 #endif
-   LLicEncrypt lic;
+   LFileDate lic;
    QString str,seed;
    if (argc>=2)  seed = argv[1];
    else

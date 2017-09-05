@@ -106,9 +106,7 @@ public:
     QString getMid();
     QString getMidMark();
 
-    QString passwdToday(QString seed = "");
-    bool isPasswdToday(QString pass ,QString seed = "");
-       
+
     QString _venderKey,_venderSign;
 private:
     void init();
